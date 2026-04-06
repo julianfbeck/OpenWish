@@ -1,0 +1,22 @@
+{
+  "name": "@openwish/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx wrangler@4.80.0 dev --config wrangler.toml --local",
+    "build": "npx wrangler@4.80.0 deploy --config wrangler.toml --dry-run",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openwish/shared": "0.1.0",
+    "hono": "4.12.11",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260405.1",
+    "typescript": "6.0.2",
+    "vitest": "3.2.4"
+  }
+}

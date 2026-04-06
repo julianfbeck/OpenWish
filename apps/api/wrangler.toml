@@ -1,0 +1,11 @@
+name = "openwish-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-06"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "openwish"
+database_id = "replace-me"
+
+[vars]
+OPENWISH_CORS_ORIGIN = "*"
