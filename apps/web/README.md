@@ -107,7 +107,8 @@ pnpm run deploy
     "OPENWISH_NOTIFICATION_FROM": "noreply@example.com",
     "OPENWISH_DASHBOARD_URL": "https://wishkit.example.com",
     "OPENWISH_PASSKEY_RP_ID": "wishkit.example.com",
-    "OPENWISH_PASSKEY_RP_NAME": "OpenWish"
+    "OPENWISH_PASSKEY_RP_NAME": "OpenWish",
+    "OPENWISH_TURNSTILE_SITE_KEY": "<from dash.cloudflare.com → Turnstile>"
   }
 }
 ```
@@ -121,6 +122,7 @@ pnpm run deploy
 | `OPENWISH_DASHBOARD_URL` | recommended | Public URL the dashboard is served from — used to build the deep-link in notification emails AND as the WebAuthn `expectedOrigin`. |
 | `OPENWISH_PASSKEY_RP_ID` | required for passkeys | Must equal the host (no scheme, no port). E.g. `wishkit.example.com`. |
 | `OPENWISH_PASSKEY_RP_NAME` | optional | Shown in the OS passkey prompt. |
+| `OPENWISH_TURNSTILE_SITE_KEY` | required for the public form | Public site key from `dash.cloudflare.com → Turnstile → Add site`. Embedded in the `/feedback/<slug>` page. |
 
 ### Secrets
 
@@ -130,6 +132,7 @@ pnpm run deploy
 | `OPENWISH_DASHBOARD_PASSWORD` | yes (initial) | Used for the very first sign-in so you can register a passkey. After at least one passkey exists, every password attempt returns 401. Delete rows in `auth_passkeys` to re-enable it. |
 | `OPENWISH_DASHBOARD_SESSION_SECRET` | yes | HMAC key for the 7-day signed session cookie. Generate with `openssl rand -base64 48`. |
 | `OPENWISH_BOOTSTRAP_TOKEN` | optional | If set, allows `POST /api/admin/projects/bootstrap` to create projects without a dashboard session. Useful for the very first project before you log in. **Delete after first use** for the strongest posture. |
+| `OPENWISH_TURNSTILE_SECRET_KEY` | required for the public form | Server-side secret paired with the site key above. Used on `siteverify` calls. Set with `wrangler secret put OPENWISH_TURNSTILE_SECRET_KEY`. |
 
 ---
 
@@ -185,6 +188,12 @@ Auth: signed `openwish_dashboard_session` cookie issued by `/api/auth/login` or 
 
 - `GET /api/auth/passkey/summary` — `{hasPasskey: boolean}` so the login page can show the right CTA
 - `POST /api/auth/passkey/login/options` and `POST /api/auth/passkey/login/verify` — the passkey login ceremony
+- `GET /api/public/projects/$slug` — minimal project info (`{ name, slug, enabled, turnstileSiteKey }`) used by the public feedback page. Returns 404 when the project doesn't exist OR when its public form is disabled.
+- `POST /api/public/feedback/$slug` — accepts `{ kind: "bug" | "wish", title, description, email?, turnstileToken }`. Validates the Turnstile token via `siteverify`, applies an IP-based rate limit (5/min/IP, 60/min/project), then routes to the existing wish/bug create flow. Disabled projects return 404 here too.
+
+### Public feedback page
+
+Browsers can submit bug reports or feature requests to a project at `https://<your-host>/feedback/<slug>` once you flip the **Public feedback form** toggle on the project's dashboard page. The page renders a Cloudflare Turnstile widget; `OPENWISH_TURNSTILE_SITE_KEY` (var) and `OPENWISH_TURNSTILE_SECRET_KEY` (secret) must be set or the page will show a configuration warning. This URL is what you'd put in App Store Connect's app-support field so testers and end users have a way to reach you without needing an iOS install. Cloudflare's documented dummy keys (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) always pass and are fine for local dev — see `.dev.vars.example`.
 
 ---
 

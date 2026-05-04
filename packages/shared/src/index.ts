@@ -67,6 +67,7 @@ export const createWishRequestSchema = z.object({
 export type CreateWishRequest = z.infer<typeof createWishRequestSchema>;
 
 export const createWishResponseSchema = z.object({
+  id: z.string().uuid(),
   title: z.string(),
   description: z.string(),
   state: wishStateSchema,
@@ -187,10 +188,13 @@ export const adminProjectSettingsSchema = z
       .or(z.literal(""))
       .or(z.null())
       .optional(),
+    publicFormEnabled: z.boolean().optional(),
   })
   .refine(
     (value) =>
-      value.watermarkEnabled !== undefined || value.notificationEmail !== undefined,
+      value.watermarkEnabled !== undefined ||
+      value.notificationEmail !== undefined ||
+      value.publicFormEnabled !== undefined,
     { message: "At least one settings field must be provided." },
   );
 export type AdminProjectSettings = z.infer<typeof adminProjectSettingsSchema>;
@@ -206,6 +210,7 @@ export const adminProjectResponseSchema = z.object({
     slug: z.string(),
     watermarkEnabled: z.boolean(),
     notificationEmail: z.string().nullable().optional(),
+    publicFormEnabled: z.boolean().optional(),
     createdAt: z.string().datetime(),
     totalUsers: z.number().int(),
     totalWishes: z.number().int(),
@@ -387,3 +392,41 @@ export const passkeyLoginVerifyRequestSchema = z.object({
   assertion: z.unknown(),
 });
 export type PasskeyLoginVerifyRequest = z.infer<typeof passkeyLoginVerifyRequestSchema>;
+
+// Public feedback form (web)
+// Returned by GET /api/public/projects/$slug — only the bare minimum that the
+// public page needs to render. Never expose api_key/admin_token from this route.
+export const publicFeedbackProjectSchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  enabled: z.boolean(),
+  turnstileSiteKey: z.string().nullable(),
+});
+export type PublicFeedbackProject = z.infer<typeof publicFeedbackProjectSchema>;
+
+export const publicFeedbackKindSchema = z.enum(["wish", "bug"]);
+export type PublicFeedbackKind = z.infer<typeof publicFeedbackKindSchema>;
+
+export const publicFeedbackSubmitRequestSchema = z.object({
+  kind: publicFeedbackKindSchema,
+  title: z.string().min(1).max(80),
+  description: z.string().min(1).max(2_000),
+  email: z
+    .string()
+    .email()
+    .max(254)
+    .or(z.literal(""))
+    .nullable()
+    .optional()
+    .transform((value) =>
+      value === "" || value === undefined || value === null ? null : value,
+    ),
+  turnstileToken: z.string().min(1).max(2_048),
+});
+export type PublicFeedbackSubmitRequest = z.infer<typeof publicFeedbackSubmitRequestSchema>;
+
+export const publicFeedbackSubmitResponseSchema = z.object({
+  kind: publicFeedbackKindSchema,
+  id: z.string().uuid(),
+});
+export type PublicFeedbackSubmitResponse = z.infer<typeof publicFeedbackSubmitResponseSchema>;

@@ -67,6 +67,7 @@ describe("Swift SDK routes", () => {
           admin_token: "ow_admin_demo",
           watermark_enabled: 1,
           notification_email: null,
+          public_form_enabled: 0,
           created_at: "2026-04-09T09:00:00.000Z",
           updated_at: "2026-04-09T09:00:00.000Z",
         },
@@ -146,11 +147,12 @@ describe("Swift SDK routes", () => {
 
     expect(createResponse.status).toBe(200);
     const createPayload = createWishResponseSchema.parse(await createResponse.json());
-    expect(createPayload).toEqual({
+    expect(createPayload).toMatchObject({
       title: "Transparent export history",
       description: "Show every CSV export with a timestamp and actor.",
       state: "pending",
     });
+    expect(createPayload.id).toMatch(/[0-9a-f-]{36}/);
 
     expect(db.state.users).toHaveLength(1);
     expect(db.state.users[0]?.uuid).toBe(ownerUuid);

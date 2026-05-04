@@ -364,6 +364,12 @@ export function DashboardBoardPage() {
               onSaved={(next) => setData(next)}
             />
 
+            <PublicFormSettings
+              slug={slug}
+              enabled={Boolean(data.project.publicFormEnabled)}
+              onSaved={(next) => setData(next)}
+            />
+
             {viewMode === "board" ? (
               <div className="overflow-x-auto pb-2">
                 <div className="grid min-w-[1100px] grid-cols-5 items-start gap-3">
@@ -669,6 +675,111 @@ function NotificationSettings({
       >
         {isSending ? "Sending…" : "Send test"}
       </Button>
+      {status ? (
+        <span
+          className={cn(
+            "text-xs",
+            status.kind === "error" ? "text-red-300" : "text-neutral-400",
+          )}
+        >
+          {status.message}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function PublicFormSettings({
+  slug,
+  enabled,
+  onSaved,
+}: {
+  slug: string;
+  enabled: boolean;
+  onSaved: (response: AdminProjectResponse) => void;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState<{ kind: "info" | "error"; message: string } | null>(
+    null,
+  );
+  const [didCopy, setDidCopy] = useState(false);
+
+  const publicUrl =
+    typeof window === "undefined"
+      ? `/feedback/${slug}`
+      : `${window.location.origin}/feedback/${slug}`;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-white/10 bg-neutral-950 px-4 py-3">
+      <span className="text-[11px] uppercase tracking-wider text-neutral-500">
+        Public feedback form
+      </span>
+      <div className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-neutral-900 px-2.5 py-1 text-xs text-neutral-300">
+        <Switch
+          checked={enabled}
+          disabled={isSaving}
+          onCheckedChange={async (checked) => {
+            setIsSaving(true);
+            setStatus(null);
+            try {
+              const response = await updateProjectSettings(slug, {
+                publicFormEnabled: checked,
+              });
+              onSaved(response);
+              setStatus({
+                kind: "info",
+                message: checked
+                  ? "Public form enabled."
+                  : "Public form disabled.",
+              });
+            } catch (nextError) {
+              setStatus({
+                kind: "error",
+                message:
+                  nextError instanceof Error
+                    ? nextError.message
+                    : "Could not update public form setting.",
+              });
+            } finally {
+              setIsSaving(false);
+            }
+          }}
+        />
+        {enabled ? "On" : "Off"}
+      </div>
+      {enabled ? (
+        <>
+          <Input
+            value={publicUrl}
+            readOnly
+            className="h-8 max-w-80 border-white/10 bg-neutral-900 text-sm text-neutral-300"
+            onFocus={(event) => event.currentTarget.select()}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/10 bg-transparent text-neutral-300 hover:bg-white/5 hover:text-white"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(publicUrl);
+                setDidCopy(true);
+                window.setTimeout(() => setDidCopy(false), 1500);
+              } catch {
+                setStatus({
+                  kind: "error",
+                  message: "Could not copy. Select the URL and copy manually.",
+                });
+              }
+            }}
+          >
+            {didCopy ? "Copied" : "Copy URL"}
+          </Button>
+        </>
+      ) : (
+        <span className="text-xs text-neutral-500">
+          Enable to expose <code className="text-neutral-400">/feedback/{slug}</code> for App Store support links.
+        </span>
+      )}
       {status ? (
         <span
           className={cn(

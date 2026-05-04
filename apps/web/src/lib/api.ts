@@ -11,6 +11,9 @@ import type {
   ProjectBootstrapRequest,
   ProjectCredentials,
   ProjectListResponse,
+  PublicFeedbackProject,
+  PublicFeedbackSubmitRequest,
+  PublicFeedbackSubmitResponse,
 } from "@openwish/shared";
 import type {
   AuthenticationResponseJSON,
@@ -130,6 +133,7 @@ export async function updateAdminWish(
 export type ProjectSettingsPatch = {
   watermarkEnabled?: boolean;
   notificationEmail?: string | null;
+  publicFormEnabled?: boolean;
 };
 
 export async function updateProjectSettings(
@@ -295,6 +299,26 @@ export async function deletePasskey(credentialId: string) {
   return request<{ ok: boolean }>(
     `/api/auth/passkey/${encodeURIComponent(credentialId)}`,
     { method: "DELETE" },
+  );
+}
+
+export async function fetchPublicFeedbackProject(slug: string) {
+  return request<PublicFeedbackProject>(
+    `/api/public/projects/${encodeURIComponent(slug)}`,
+  );
+}
+
+export async function submitPublicFeedback(
+  slug: string,
+  body: PublicFeedbackSubmitRequest,
+) {
+  return request<PublicFeedbackSubmitResponse>(
+    `/api/public/feedback/${encodeURIComponent(slug)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
   );
 }
 

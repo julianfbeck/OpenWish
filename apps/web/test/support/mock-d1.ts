@@ -507,6 +507,7 @@ export class MockD1Database {
         admin_token: String(bindings[4]),
         watermark_enabled: Number(bindings[5]),
         notification_email: null,
+        public_form_enabled: 0,
         created_at: String(bindings[6]),
         updated_at: String(bindings[7]),
       });
@@ -522,6 +523,20 @@ export class MockD1Database {
       const project = this.state.projects.find((entry) => entry.id === projectId);
       if (project) {
         project.notification_email = email === null || email === undefined ? null : String(email);
+        project.updated_at = String(updatedAt);
+      }
+      return { success: true };
+    }
+
+    if (
+      normalized.includes(
+        "UPDATE projects SET public_form_enabled = ?, updated_at = ? WHERE id = ?",
+      )
+    ) {
+      const [enabled, updatedAt, projectId] = bindings;
+      const project = this.state.projects.find((entry) => entry.id === projectId);
+      if (project) {
+        project.public_form_enabled = Number(enabled);
         project.updated_at = String(updatedAt);
       }
       return { success: true };

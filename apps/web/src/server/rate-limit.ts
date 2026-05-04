@@ -1,4 +1,4 @@
-import { sdkError } from "./http";
+import { publicError, sdkError } from "./http";
 import type { Bindings } from "./types";
 
 // Fixed-window rate limiter backed by a single Cloudflare KV namespace.
@@ -12,7 +12,9 @@ export type RateLimitKind =
   | "sdk-read"
   | "sdk-screenshot"
   | "sdk-write-project"
-  | "sdk-read-project";
+  | "sdk-read-project"
+  | "public-form-ip"
+  | "public-form-project";
 
 type LimitConfig = {
   windowSeconds: number;
@@ -27,6 +29,10 @@ const LIMITS: Record<RateLimitKind, LimitConfig> = {
   // Per apiKey — sanity caps so a rogue device can't burn the whole quota.
   "sdk-write-project": { windowSeconds: 60, max: 300 },
   "sdk-read-project": { windowSeconds: 60, max: 600 },
+  // Public feedback form: tighter caps because there's no API key in play
+  // and Turnstile is the primary line of defense against bots.
+  "public-form-ip": { windowSeconds: 60, max: 5 },
+  "public-form-project": { windowSeconds: 60, max: 60 },
 };
 
 export type RateLimitDecision =
@@ -72,8 +78,11 @@ async function consume(
   return { allowed: true, resetIn };
 }
 
-function tooManyRequests(resetIn: number): Response {
-  const response = sdkError("requestResultedInError", 429);
+function tooManyRequests(resetIn: number, errorMode: "sdk" | "public"): Response {
+  const response =
+    errorMode === "sdk"
+      ? sdkError("requestResultedInError", 429)
+      : publicError(429, "Too many requests. Please try again shortly.");
   response.headers.set("Retry-After", String(resetIn));
   response.headers.set("X-RateLimit-Reset", String(resetIn));
   return response;
@@ -82,16 +91,18 @@ function tooManyRequests(resetIn: number): Response {
 type CheckArgs = {
   env: Bindings;
   kinds: Array<{ kind: RateLimitKind; identifier: string }>;
+  errorMode?: "sdk" | "public";
 };
 
 export async function checkSdkRateLimit({
   env,
   kinds,
+  errorMode = "sdk",
 }: CheckArgs): Promise<RateLimitDecision> {
   for (const { kind, identifier } of kinds) {
     const { allowed, resetIn } = await consume(env.RATE_LIMIT_KV, kind, identifier);
     if (!allowed) {
-      return { ok: false, response: tooManyRequests(resetIn) };
+      return { ok: false, response: tooManyRequests(resetIn, errorMode) };
     }
   }
   return { ok: true };
@@ -135,4 +146,30 @@ export async function enforceSdkRateLimit({
   })();
 
   return checkSdkRateLimit({ env, kinds: writeKinds });
+}
+
+export type PublicFormRateLimitInput = {
+  env: Bindings;
+  ip: string;
+  apiKey: string;
+};
+
+/**
+ * Public feedback form: cap by both IP and project so a single IP can't drown
+ * the project, and a botnet hitting one project can't lock out the rest of
+ * the platform from a shared global limit.
+ */
+export async function enforcePublicFormRateLimit({
+  env,
+  ip,
+  apiKey,
+}: PublicFormRateLimitInput): Promise<RateLimitDecision> {
+  return checkSdkRateLimit({
+    env,
+    errorMode: "public",
+    kinds: [
+      { kind: "public-form-ip", identifier: ip },
+      { kind: "public-form-project", identifier: apiKey },
+    ],
+  });
 }

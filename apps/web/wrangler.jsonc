@@ -37,6 +37,7 @@
     "OPENWISH_NOTIFICATION_FROM": "noreply@juli.sh",
     "OPENWISH_DASHBOARD_URL": "https://wishkit.juli.sh",
     "OPENWISH_PASSKEY_RP_ID": "wishkit.juli.sh",
-    "OPENWISH_PASSKEY_RP_NAME": "OpenWish"
+    "OPENWISH_PASSKEY_RP_NAME": "OpenWish",
+    "OPENWISH_TURNSTILE_SITE_KEY": "0x4AAAAAADLUr_J3yn2nqt0a"
   }
 }

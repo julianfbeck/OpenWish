@@ -2,3 +2,8 @@ OPENWISH_DASHBOARD_USERNAME=admin
 OPENWISH_DASHBOARD_PASSWORD=change-me
 OPENWISH_DASHBOARD_SESSION_SECRET=replace-with-a-long-random-string
 OPENWISH_BOOTSTRAP_TOKEN=
+# Cloudflare Turnstile — required to use the public /feedback/<slug> page.
+# The dummy keys below always pass and are safe to commit for local dev.
+# Real values come from dash.cloudflare.com → Turnstile → Add site.
+OPENWISH_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+OPENWISH_TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA

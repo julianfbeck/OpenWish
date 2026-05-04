@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN public_form_enabled INTEGER NOT NULL DEFAULT 0;

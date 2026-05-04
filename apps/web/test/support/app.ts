@@ -33,6 +33,8 @@ import { Route as AdminBugRoute } from "../../src/routes/api/admin/projects/$slu
 import { Route as AdminBugCommentsRoute } from "../../src/routes/api/admin/projects/$slug/bugs/$bugId/comments";
 import { Route as AdminBugScreenshotRoute } from "../../src/routes/api/admin/projects/$slug/bugs/$bugId/screenshots/$key";
 import { Route as HealthRoute } from "../../src/routes/health";
+import { Route as PublicProjectRoute } from "../../src/routes/api/public/projects/$slug";
+import { Route as PublicFeedbackRoute } from "../../src/routes/api/public/feedback/$slug";
 
 type ServerHandler = (input: {
   context: ServerRequestContext;
@@ -174,6 +176,18 @@ const routes: RouteDefinition[] = [
     /^\/api\/admin\/projects\/([^/]+)\/bugs\/([^/]+)\/screenshots\/([^/]+)$/,
     ["slug", "bugId", "key"],
     routeHandlers(AdminBugScreenshotRoute),
+  ),
+  route(
+    "GET",
+    /^\/api\/public\/projects\/([^/]+)$/,
+    ["slug"],
+    routeHandlers(PublicProjectRoute),
+  ),
+  route(
+    "POST",
+    /^\/api\/public\/feedback\/([^/]+)$/,
+    ["slug"],
+    routeHandlers(PublicFeedbackRoute),
   ),
 ];
 

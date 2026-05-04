@@ -36,5 +36,10 @@ describe("database schema initialization", () => {
     expect(mock.batchCalls).toBe(1);
     expect(mock.preparedSql.some((sql) => sql.includes("CREATE TABLE IF NOT EXISTS projects"))).toBe(true);
     expect(mock.preparedSql.some((sql) => sql.includes("CREATE INDEX IF NOT EXISTS idx_comments_project_wish"))).toBe(true);
+    expect(
+      mock.preparedSql.some((sql) =>
+        sql.includes("public_form_enabled INTEGER NOT NULL DEFAULT 0"),
+      ),
+    ).toBe(true);
   });
 });

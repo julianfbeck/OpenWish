@@ -36,6 +36,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/settings")({
               : bodyResult.data.notificationEmail === ""
                 ? null
                 : bodyResult.data.notificationEmail,
+          publicFormEnabled: bodyResult.data.publicFormEnabled,
         };
 
         await updateProjectSettings(requestContext.env.DB, projectResult.project.id, patch);

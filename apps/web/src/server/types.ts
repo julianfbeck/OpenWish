@@ -12,6 +12,8 @@ export type Bindings = {
   OPENWISH_DASHBOARD_URL?: string;
   OPENWISH_PASSKEY_RP_ID?: string;
   OPENWISH_PASSKEY_RP_NAME?: string;
+  OPENWISH_TURNSTILE_SITE_KEY?: string;
+  OPENWISH_TURNSTILE_SECRET_KEY?: string;
 };
 
 export type PasskeyRow = {
@@ -47,6 +49,7 @@ export type ProjectRow = {
   admin_token: string;
   watermark_enabled: number;
   notification_email: string | null;
+  public_form_enabled: number;
   created_at: string;
   updated_at: string;
 };

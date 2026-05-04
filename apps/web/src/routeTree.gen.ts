@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FeedbackSlugRouteImport } from './routes/feedback.$slug'
 import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projects'
 import { Route as DashboardSlugRouteImport } from './routes/dashboard.$slug'
 import { Route as AdminSlugRouteImport } from './routes/admin.$slug'
@@ -31,6 +32,8 @@ import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAdminProjectsRouteImport } from './routes/api/admin/projects'
 import { Route as ApiAuthPasskeyIndexRouteImport } from './routes/api/auth/passkey/index'
+import { Route as ApiPublicProjectsSlugRouteImport } from './routes/api/public/projects/$slug'
+import { Route as ApiPublicFeedbackSlugRouteImport } from './routes/api/public/feedback/$slug'
 import { Route as ApiAuthPasskeySummaryRouteImport } from './routes/api/auth/passkey/summary'
 import { Route as ApiAuthPasskeyCredentialIdRouteImport } from './routes/api/auth/passkey/$credentialId'
 import { Route as ApiAdminProjectsBootstrapRouteImport } from './routes/api/admin/projects/bootstrap'
@@ -68,6 +71,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackSlugRoute = FeedbackSlugRouteImport.update({
+  id: '/feedback/$slug',
+  path: '/feedback/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardProjectsRoute = DashboardProjectsRouteImport.update({
@@ -158,6 +166,16 @@ const ApiAdminProjectsRoute = ApiAdminProjectsRouteImport.update({
 const ApiAuthPasskeyIndexRoute = ApiAuthPasskeyIndexRouteImport.update({
   id: '/api/auth/passkey/',
   path: '/api/auth/passkey/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicProjectsSlugRoute = ApiPublicProjectsSlugRouteImport.update({
+  id: '/api/public/projects/$slug',
+  path: '/api/public/projects/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFeedbackSlugRoute = ApiPublicFeedbackSlugRouteImport.update({
+  id: '/api/public/feedback/$slug',
+  path: '/api/public/feedback/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthPasskeySummaryRoute = ApiAuthPasskeySummaryRouteImport.update({
@@ -275,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/admin/$slug': typeof AdminSlugRoute
   '/dashboard/$slug': typeof DashboardSlugRouteWithChildren
   '/dashboard/projects': typeof DashboardProjectsRoute
+  '/feedback/$slug': typeof FeedbackSlugRoute
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -293,6 +312,8 @@ export interface FileRoutesByFullPath {
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
   '/api/auth/passkey/summary': typeof ApiAuthPasskeySummaryRoute
+  '/api/public/feedback/$slug': typeof ApiPublicFeedbackSlugRoute
+  '/api/public/projects/$slug': typeof ApiPublicProjectsSlugRoute
   '/api/auth/passkey/': typeof ApiAuthPasskeyIndexRoute
   '/api/admin/projects/$slug/analytics': typeof ApiAdminProjectsSlugAnalyticsRoute
   '/api/admin/projects/$slug/bugs': typeof ApiAdminProjectsSlugBugsRouteWithChildren
@@ -317,6 +338,7 @@ export interface FileRoutesByTo {
   '/admin/$slug': typeof AdminSlugRoute
   '/dashboard/$slug': typeof DashboardSlugRouteWithChildren
   '/dashboard/projects': typeof DashboardProjectsRoute
+  '/feedback/$slug': typeof FeedbackSlugRoute
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -335,6 +357,8 @@ export interface FileRoutesByTo {
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
   '/api/auth/passkey/summary': typeof ApiAuthPasskeySummaryRoute
+  '/api/public/feedback/$slug': typeof ApiPublicFeedbackSlugRoute
+  '/api/public/projects/$slug': typeof ApiPublicProjectsSlugRoute
   '/api/auth/passkey': typeof ApiAuthPasskeyIndexRoute
   '/api/admin/projects/$slug/analytics': typeof ApiAdminProjectsSlugAnalyticsRoute
   '/api/admin/projects/$slug/bugs': typeof ApiAdminProjectsSlugBugsRouteWithChildren
@@ -360,6 +384,7 @@ export interface FileRoutesById {
   '/admin/$slug': typeof AdminSlugRoute
   '/dashboard/$slug': typeof DashboardSlugRouteWithChildren
   '/dashboard/projects': typeof DashboardProjectsRoute
+  '/feedback/$slug': typeof FeedbackSlugRoute
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -378,6 +403,8 @@ export interface FileRoutesById {
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
   '/api/auth/passkey/summary': typeof ApiAuthPasskeySummaryRoute
+  '/api/public/feedback/$slug': typeof ApiPublicFeedbackSlugRoute
+  '/api/public/projects/$slug': typeof ApiPublicProjectsSlugRoute
   '/api/auth/passkey/': typeof ApiAuthPasskeyIndexRoute
   '/api/admin/projects/$slug/analytics': typeof ApiAdminProjectsSlugAnalyticsRoute
   '/api/admin/projects/$slug/bugs': typeof ApiAdminProjectsSlugBugsRouteWithChildren
@@ -404,6 +431,7 @@ export interface FileRouteTypes {
     | '/admin/$slug'
     | '/dashboard/$slug'
     | '/dashboard/projects'
+    | '/feedback/$slug'
     | '/api/admin/projects'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -422,6 +450,8 @@ export interface FileRouteTypes {
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
     | '/api/auth/passkey/summary'
+    | '/api/public/feedback/$slug'
+    | '/api/public/projects/$slug'
     | '/api/auth/passkey/'
     | '/api/admin/projects/$slug/analytics'
     | '/api/admin/projects/$slug/bugs'
@@ -446,6 +476,7 @@ export interface FileRouteTypes {
     | '/admin/$slug'
     | '/dashboard/$slug'
     | '/dashboard/projects'
+    | '/feedback/$slug'
     | '/api/admin/projects'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -464,6 +495,8 @@ export interface FileRouteTypes {
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
     | '/api/auth/passkey/summary'
+    | '/api/public/feedback/$slug'
+    | '/api/public/projects/$slug'
     | '/api/auth/passkey'
     | '/api/admin/projects/$slug/analytics'
     | '/api/admin/projects/$slug/bugs'
@@ -488,6 +521,7 @@ export interface FileRouteTypes {
     | '/admin/$slug'
     | '/dashboard/$slug'
     | '/dashboard/projects'
+    | '/feedback/$slug'
     | '/api/admin/projects'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -506,6 +540,8 @@ export interface FileRouteTypes {
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
     | '/api/auth/passkey/summary'
+    | '/api/public/feedback/$slug'
+    | '/api/public/projects/$slug'
     | '/api/auth/passkey/'
     | '/api/admin/projects/$slug/analytics'
     | '/api/admin/projects/$slug/bugs'
@@ -529,6 +565,7 @@ export interface RootRouteChildren {
   HealthRoute: typeof HealthRoute
   LoginRoute: typeof LoginRoute
   AdminSlugRoute: typeof AdminSlugRoute
+  FeedbackSlugRoute: typeof FeedbackSlugRoute
   ApiAdminProjectsRoute: typeof ApiAdminProjectsRouteWithChildren
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -543,6 +580,8 @@ export interface RootRouteChildren {
   ApiWishVoteRoute: typeof ApiWishVoteRoute
   ApiAuthPasskeyCredentialIdRoute: typeof ApiAuthPasskeyCredentialIdRoute
   ApiAuthPasskeySummaryRoute: typeof ApiAuthPasskeySummaryRoute
+  ApiPublicFeedbackSlugRoute: typeof ApiPublicFeedbackSlugRoute
+  ApiPublicProjectsSlugRoute: typeof ApiPublicProjectsSlugRoute
   ApiAuthPasskeyIndexRoute: typeof ApiAuthPasskeyIndexRoute
   ApiAuthPasskeyLoginOptionsRoute: typeof ApiAuthPasskeyLoginOptionsRoute
   ApiAuthPasskeyLoginVerifyRoute: typeof ApiAuthPasskeyLoginVerifyRoute
@@ -578,6 +617,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback/$slug': {
+      id: '/feedback/$slug'
+      path: '/feedback/$slug'
+      fullPath: '/feedback/$slug'
+      preLoaderRoute: typeof FeedbackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/projects': {
@@ -704,6 +750,20 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/passkey'
       fullPath: '/api/auth/passkey/'
       preLoaderRoute: typeof ApiAuthPasskeyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/projects/$slug': {
+      id: '/api/public/projects/$slug'
+      path: '/api/public/projects/$slug'
+      fullPath: '/api/public/projects/$slug'
+      preLoaderRoute: typeof ApiPublicProjectsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/feedback/$slug': {
+      id: '/api/public/feedback/$slug'
+      path: '/api/public/feedback/$slug'
+      fullPath: '/api/public/feedback/$slug'
+      preLoaderRoute: typeof ApiPublicFeedbackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/passkey/summary': {
@@ -953,6 +1013,7 @@ const rootRouteChildren: RootRouteChildren = {
   HealthRoute: HealthRoute,
   LoginRoute: LoginRoute,
   AdminSlugRoute: AdminSlugRoute,
+  FeedbackSlugRoute: FeedbackSlugRoute,
   ApiAdminProjectsRoute: ApiAdminProjectsRouteWithChildren,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
@@ -967,6 +1028,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWishVoteRoute: ApiWishVoteRoute,
   ApiAuthPasskeyCredentialIdRoute: ApiAuthPasskeyCredentialIdRoute,
   ApiAuthPasskeySummaryRoute: ApiAuthPasskeySummaryRoute,
+  ApiPublicFeedbackSlugRoute: ApiPublicFeedbackSlugRoute,
+  ApiPublicProjectsSlugRoute: ApiPublicProjectsSlugRoute,
   ApiAuthPasskeyIndexRoute: ApiAuthPasskeyIndexRoute,
   ApiAuthPasskeyLoginOptionsRoute: ApiAuthPasskeyLoginOptionsRoute,
   ApiAuthPasskeyLoginVerifyRoute: ApiAuthPasskeyLoginVerifyRoute,

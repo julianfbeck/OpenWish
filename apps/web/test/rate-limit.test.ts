@@ -50,6 +50,7 @@ describe("rate limiting", () => {
           admin_token: "ow_admin_rl",
           watermark_enabled: 0,
           notification_email: null,
+          public_form_enabled: 0,
           created_at: "2026-04-09T09:00:00.000Z",
           updated_at: "2026-04-09T09:00:00.000Z",
         },

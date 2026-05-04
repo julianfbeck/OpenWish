@@ -35,6 +35,7 @@ const schemaStatements = [
     admin_token TEXT NOT NULL,
     watermark_enabled INTEGER NOT NULL DEFAULT 0,
     notification_email TEXT,
+    public_form_enabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
@@ -358,6 +359,7 @@ export async function createWish(
 ): Promise<CreateWishResponse> {
   await ensureUserExists(db, project.id, userUuid);
 
+  const id = crypto.randomUUID();
   const timestamp = nowIso();
   await db
     .prepare(
@@ -365,7 +367,7 @@ export async function createWish(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
-      crypto.randomUUID(),
+      id,
       project.id,
       userUuid,
       input.title,
@@ -377,6 +379,7 @@ export async function createWish(
     .run();
 
   return {
+    id,
     title: input.title,
     description: input.description,
     state: input.state,
@@ -595,7 +598,11 @@ export async function mergeWish(
 export async function updateProjectSettings(
   db: D1Database,
   projectId: string,
-  patch: { watermarkEnabled?: boolean; notificationEmail?: string | null },
+  patch: {
+    watermarkEnabled?: boolean;
+    notificationEmail?: string | null;
+    publicFormEnabled?: boolean;
+  },
 ) {
   if (patch.watermarkEnabled !== undefined) {
     await db
@@ -608,6 +615,13 @@ export async function updateProjectSettings(
     await db
       .prepare(`UPDATE projects SET notification_email = ?, updated_at = ? WHERE id = ?`)
       .bind(patch.notificationEmail, nowIso(), projectId)
+      .run();
+  }
+
+  if (patch.publicFormEnabled !== undefined) {
+    await db
+      .prepare(`UPDATE projects SET public_form_enabled = ?, updated_at = ? WHERE id = ?`)
+      .bind(patch.publicFormEnabled ? 1 : 0, nowIso(), projectId)
       .run();
   }
 }
@@ -645,6 +659,7 @@ export async function loadAdminProject(
       slug: project.slug,
       watermarkEnabled: project.watermark_enabled === 1,
       notificationEmail: project.notification_email ?? null,
+      publicFormEnabled: project.public_form_enabled === 1,
       createdAt: project.created_at,
       totalUsers: userCount?.count ?? 0,
       totalWishes: listWishResponse.list.length,
