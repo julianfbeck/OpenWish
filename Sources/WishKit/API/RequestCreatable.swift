@@ -71,6 +71,18 @@ extension RequestCreatable {
         request.addSdkInfo()
         return request
     }
+
+    /// Create a POST request whose body is raw bytes (e.g. an image upload).
+    static func createAuthedRawPOSTRequest(to url: URL, body: Data, contentType: String) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.addAuth()
+        request.addSdkInfo()
+        return request
+    }
 }
 
 extension URLRequest {

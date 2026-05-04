@@ -1,129 +1,79 @@
 # OpenWish
 
-OpenWish is a Cloudflare-hostable replacement backend and web surface for the `WishKit` Swift SDK in this repository.
+OpenWish is a **self-hosted Cloudflare backend and admin dashboard for [WishKit](https://github.com/wishkit/wishkit-ios)**, the SwiftUI feedback library by [Martin Lasek](https://github.com/martinlasek). The original Swift package is included unchanged so existing WishKit clients keep working — OpenWish replaces the hosted `wishkit.io` API with a stack you run yourself on Cloudflare's free / pay-as-you-go tier and adds a few features the hosted product doesn't have.
 
-The Swift library under `Sources/WishKit` is intentionally left intact. OpenWish adds:
+> WishKit is © 2023 Martin Lasek, MIT licensed. OpenWish builds on it without forking the SwiftUI library — point `WishKit.configure(apiUrl:)` at your own deployment and everything else stays the same.
 
-- a Hono API for Cloudflare Workers
-- a D1 schema for wishes, votes, comments, users, and projects
-- a React public feedback board
-- a React admin panel
-- shared TypeScript contracts that mirror the Swift payloads
+## What OpenWish adds on top of WishKit
 
-## Repo Layout
+| Feature | Hosted WishKit (wishkit.io) | OpenWish |
+| --- | --- | --- |
+| Backend you control | ❌ | ✅ Cloudflare Workers + D1 |
+| Wishes (feature requests) | ✅ | ✅ — same Swift SDK contract |
+| Bug reports with screenshots | ❌ | ✅ R2-backed, up to 4 per bug |
+| User-visible "my bug reports" with admin replies | ❌ | ✅ |
+| Email notifications on new wishes / bugs | ❌ | ✅ via Cloudflare Email Routing |
+| Per-project notification email + send-test from the dashboard | ❌ | ✅ |
+| Single-user dashboard auth | password only | password **+ passkeys** (WebAuthn, multi-device) |
+| Rate limiting per device + per project | ❌ | ✅ Workers KV–backed fixed windows |
+| Project switcher / multiple projects per dashboard | per account | ✅ unlimited |
+| Custom domain | ❌ | ✅ Cloudflare custom domain on the Worker |
 
-- `Sources/WishKit`: existing Swift package and UI library
-- `apps/api`: Cloudflare Worker API
-- `apps/web`: React frontend for public board and admin
-- `packages/shared`: shared request/response types
+The Swift SDK contract (`/api/wish/list`, `/api/wish/create`, `/api/wish/vote`, `/api/comment/create`, `/api/user/update`) is preserved byte-for-byte, so existing WishKit-using apps only need to point `WishKit.configure(apiUrl:)` at the new host.
 
-## Swift Compatibility
+## Repo layout
 
-The Worker mirrors the API shape expected by the existing Swift SDK:
+- `Sources/WishKit` — the upstream WishKit Swift package (Martin Lasek's MIT-licensed library). The only modification is accepting `apiUrl` in `WishKit.configure` so the SDK can talk to a non-`wishkit.io` host. Net-new SwiftUI: `WishKit.BugReportView()` for the bug-report flow.
+- `apps/web` — the OpenWish server. TanStack Start app deployed as a single Cloudflare Worker. **Read [`apps/web/README.md`](apps/web/README.md) for hosting & operations.**
+- `packages/shared` — TypeScript request/response schemas (zod) shared between the Worker and the dashboard SPA.
+- `ExampleApp/openwish` — Xcode project showing how to point WishKit at an OpenWish deployment.
 
-- `GET /api/wish/list`
-- `POST /api/wish/create`
-- `POST /api/wish/vote`
-- `POST /api/comment/create`
-- `POST /api/user/update`
+## Swift compatibility
 
-Important: the untouched Swift SDK still defaults to `https://www.wishkit.io/api` in [ProjectSettings.swift](/Users/julianbeck/Development/swift/OpenWish/Sources/WishKit/ProjectSettings.swift). To use OpenWish in an app without changing the library, you need to set the `wishkit-url` process environment variable to your OpenWish API base URL at runtime.
-
-## Local Development
-
-Install workspace dependencies:
-
-```bash
-npm install
+```swift
+WishKit.configure(
+    with: "ow_api_<your-key>",
+    apiUrl: "https://wishkit.example.com/api"
+)
 ```
 
-Run the API locally:
+Resolution order:
+1. `apiUrl` passed to `WishKit.configure(...)`
+2. `wishkit-url` process environment variable
+3. fallback `https://www.wishkit.io/api` (i.e. unmodified WishKit behaviour)
+
+`WishKit.FeedbackListView()` and `WishKit.BugReportView()` are the two public SwiftUI surfaces. Both work as `.sheet` content inside a `NavigationStack`.
+
+## Hosting OpenWish
+
+See **[`apps/web/README.md`](apps/web/README.md)** for the step-by-step Cloudflare setup. Short version:
+
+1. A Cloudflare account.
+2. The `wrangler` CLI logged in (`wrangler login`).
+3. A D1 database, an R2 bucket, a KV namespace, and Email Routing on a domain you control.
+4. `pnpm install && pnpm --filter @openwish/web run deploy`.
+
+## Local development
 
 ```bash
-npm run dev:api
+pnpm install
+cp apps/web/.dev.vars.example apps/web/.dev.vars
+# edit apps/web/.dev.vars to provide username/password/session-secret
+pnpm dev
 ```
 
-Run the web app locally:
-
-```bash
-npm run dev:web
-```
-
-The web app defaults to `http://127.0.0.1:8787` for the API. Override it with `VITE_OPENWISH_API_BASE_URL` if needed.
-
-## Cloudflare Deployment
-
-Create the D1 database:
-
-```bash
-npx wrangler@4.80.0 d1 create openwish
-```
-
-Copy the returned `database_id` into [apps/api/wrangler.toml](/Users/julianbeck/Development/swift/OpenWish/apps/api/wrangler.toml).
-
-Apply migrations:
-
-```bash
-npx wrangler@4.80.0 d1 migrations apply openwish --config apps/api/wrangler.toml
-```
-
-Set the bootstrap secret used by the admin panel:
-
-```bash
-npx wrangler@4.80.0 secret put OPENWISH_BOOTSTRAP_TOKEN --config apps/api/wrangler.toml
-```
-
-Optionally set the allowed browser origin:
-
-```bash
-npx wrangler@4.80.0 secret put OPENWISH_CORS_ORIGIN --config apps/api/wrangler.toml
-```
-
-Deploy the API:
-
-```bash
-npx wrangler@4.80.0 deploy --config apps/api/wrangler.toml
-```
-
-Build the frontend:
-
-```bash
-npm run build --workspace @openwish/web
-```
-
-Deploy `apps/web/dist` to Cloudflare Pages with:
-
-```bash
-VITE_OPENWISH_API_BASE_URL=https://your-api-domain.example.com
-```
-
-## Admin Flow
-
-1. Open `/admin/<slug>`.
-2. Create a project with the bootstrap token.
-3. Save the returned API key and admin token.
-4. Reload the same route with the admin token.
-5. Use the public board at `/projects/<slug>`.
+The dashboard and `/api/**` routes are served from the same TanStack Start app on `http://localhost:5173`.
 
 ## Verification
 
-These checks pass in the current workspace:
-
 ```bash
-swift test
-npm run typecheck --workspace @openwish/shared
-npm run typecheck --workspace @openwish/api
-npm run test --workspace @openwish/api
-npm run typecheck --workspace @openwish/web
-npm run build --workspace @openwish/web
+swift test          # WishKit Swift tests
+pnpm typecheck      # TS for shared package + web app
+pnpm test           # vitest (45+ cases covering SDK + admin + passkey + rate-limit flows)
+pnpm build          # vite build (regenerates the route tree)
 ```
 
-## Current Scope
+## Credits & license
 
-OpenWish currently supports:
-
-- project bootstrap and per-project admin tokens
-- public wish creation, voting, and comments
-- admin roadmap state changes and admin comments
-- watermark toggling
-- shared request/response contracts aligned with the Swift client
+- **WishKit Swift package** — © 2023 Martin Lasek, [MIT](https://github.com/wishkit/wishkit-ios/blob/main/LICENSE). The package in `Sources/WishKit` and the `wishkit-ios-shared` 1.5.0 dependency it pulls from `https://github.com/wishkit/wishkit-ios-shared` are unchanged from upstream beyond the `apiUrl` configure parameter and the new `BugReportView`. If you use OpenWish, also star/sponsor the original WishKit project — none of this exists without it.
+- **OpenWish server, dashboard, and bug-report extensions** — same MIT license; see `LICENSE`.

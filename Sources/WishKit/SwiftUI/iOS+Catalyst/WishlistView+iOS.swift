@@ -47,6 +47,9 @@ struct WishlistViewIOS: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
+    @Environment(\.presentationMode)
+    private var presentationMode
+
     @State
     private var selectedWishState: LocalWishState = .all
 
@@ -157,13 +160,24 @@ struct WishlistViewIOS: View {
                 VStack {
 
                     if WishKit.config.buttons.segmentedControl.display == .show {
-                        Spacer(minLength: 15)
+                        Spacer(minLength: 8)
 
-                        Picker("", selection: $selectedWishState) {
-                            ForEach(feedbackStateSelection, id: \.self) { state in
-                                Text("\(state.description) (\(getCountFor(state: state)))")
-                                    .tag(state)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(feedbackStateSelection, id: \.self) { state in
+                                    FilterChip(
+                                        title: state.description,
+                                        count: getCountFor(state: state),
+                                        isSelected: selectedWishState == state,
+                                        action: {
+                                            withAnimation(.easeInOut(duration: 0.15)) {
+                                                selectedWishState = state
+                                            }
+                                        }
+                                    )
+                                }
                             }
+                            .padding(.horizontal, 4)
                         }
                     }
 
@@ -218,7 +232,12 @@ struct WishlistViewIOS: View {
         .toolbar {
 
             ToolbarItem(placement: .topBarLeading) {
-                getRefreshButton()
+                Button(action: { presentationMode.wrappedValue.dismiss() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+                .accessibilityLabel("Close")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -251,6 +270,92 @@ struct WishlistViewIOS: View {
         } else {
             return EmptyView()
         }
+    }
+}
+
+private struct FilterChip: View {
+
+    @Environment(\.colorScheme)
+    private var colorScheme
+
+    let title: String
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                Text("\(count)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(countTextColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule().fill(countBadgeColor)
+                    )
+            }
+            .foregroundColor(textColor)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule().fill(backgroundColor)
+            )
+            .overlay(
+                Capsule().stroke(borderColor, lineWidth: isSelected ? 0 : 1)
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var primary: Color {
+        WishKit.theme.primaryColor
+    }
+
+    private var textColor: Color {
+        if isSelected {
+            return colorScheme == .dark ? .black : .white
+        }
+        return colorScheme == .dark ? .white : .black
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return primary
+        }
+        return Color.clear
+    }
+
+    private var borderColor: Color {
+        if isSelected {
+            return .clear
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.18)
+            : Color.black.opacity(0.12)
+    }
+
+    private var countBadgeColor: Color {
+        if isSelected {
+            return colorScheme == .dark
+                ? Color.black.opacity(0.18)
+                : Color.white.opacity(0.22)
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.black.opacity(0.06)
+    }
+
+    private var countTextColor: Color {
+        if isSelected {
+            return colorScheme == .dark ? .black : .white
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.9)
+            : Color.black.opacity(0.7)
     }
 }
 

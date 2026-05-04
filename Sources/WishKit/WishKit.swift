@@ -22,6 +22,8 @@ public struct WishKit {
 
     static var apiKey = "my-fancy-api-key"
 
+    static var _apiUrlOverride: String?
+
     static var user = User()
 
     static var _theme = Theme()
@@ -44,6 +46,14 @@ public struct WishKit {
         }
     }
 
+    static var apiUrlOverride: String? {
+        get {
+            return threadLock.withLock { _apiUrlOverride }
+        } set {
+            threadLock.withLock { _apiUrlOverride = newValue }
+        }
+    }
+
     #if canImport(UIKit) && !os(visionOS)
     /// (UIKit) The WishList viewcontroller.
     public static var viewController: UIViewController {
@@ -61,15 +71,16 @@ public struct WishKit {
         #endif
     }
 
-    public static func configure(with apiKey: String) {
+    public static func configure(with apiKey: String, apiUrl: String? = nil) {
         WishKit.apiKey = apiKey
+        WishKit.apiUrlOverride = apiUrl
     }
 
     /// FeedbackView that renders the list of feedback.
     public struct FeedbackListView: View {
-        
+
         public init () { }
-        
+
         public var body: some View {
         #if os(macOS) || os(visionOS)
             WishlistContainer(wishModel: WishModel())
@@ -78,6 +89,19 @@ public struct WishKit {
         #endif
         }
     }
+
+    /// OpenWish bug-report sheet — submit-only.
+    #if os(iOS)
+    @available(iOS 15.0, *)
+    public struct BugReportView: View {
+
+        public init() {}
+
+        public var body: some View {
+            BugReportContainer()
+        }
+    }
+    #endif
 }
 
 // MARK: - Payment Model

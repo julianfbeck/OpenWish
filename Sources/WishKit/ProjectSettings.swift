@@ -10,6 +10,10 @@ import Foundation
 
 struct ProjectSettings {
     static var apiUrl: String {
+        if let apiUrlOverride = WishKit.apiUrlOverride, apiUrlOverride.isEmpty == false {
+            return apiUrlOverride
+        }
+
         let wishKitUrl = ProcessInfo.processInfo.environment["wishkit-url"]
         return wishKitUrl ?? "https://www.wishkit.io/api"
     }

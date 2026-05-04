@@ -1,6 +1,7 @@
 {
   "name": "openwish",
   "private": true,
+  "packageManager": "pnpm@9.5.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -9,10 +10,16 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "dev:api": "npm run dev --workspace @openwish/api",
-    "dev:web": "npm run dev --workspace @openwish/web"
+    "dev": "pnpm --filter @openwish/web dev",
+    "build": "pnpm --filter @openwish/web build",
+    "typecheck": "pnpm --filter @openwish/shared typecheck && pnpm --filter @openwish/web typecheck",
+    "test": "pnpm --filter @openwish/web test",
+    "deploy": "pnpm --filter @openwish/web deploy"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
   }
 }

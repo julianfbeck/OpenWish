@@ -1,0 +1,42 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openwish",
+  "compatibility_date": "2026-04-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.ts",
+  "routes": [
+    { "pattern": "wishkit.juli.sh", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openwish",
+      "database_id": "a5524545-f857-4397-9f88-671790645d8a",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUGS_BUCKET",
+      "bucket_name": "openwish-bugs"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "4ea4b4f5e7844819b30daa8df99ce0e0"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "NOTIFICATION_EMAIL"
+    }
+  ],
+  "vars": {
+    "OPENWISH_CORS_ORIGIN": "https://wishkit.juli.sh",
+    "OPENWISH_NOTIFICATION_FROM": "noreply@juli.sh",
+    "OPENWISH_DASHBOARD_URL": "https://wishkit.juli.sh",
+    "OPENWISH_PASSKEY_RP_ID": "wishkit.juli.sh",
+    "OPENWISH_PASSKEY_RP_NAME": "OpenWish"
+  }
+}
