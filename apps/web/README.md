@@ -2,7 +2,7 @@
 
 This directory is the OpenWish server: a single TanStack Start app that ships as a Cloudflare Worker, hosts the admin dashboard, the Swift SDK API surface, and the bug-report screenshot store.
 
-It is the **self-hosted counterpart to [WishKit](https://github.com/wishkit/wishkit-ios)**. The Swift SDK in `Sources/WishKit/` (Martin Lasek's MIT-licensed library) talks to whatever host you point it at — this is what you deploy on the other end.
+It is the **self-hosted counterpart to [WishKit](https://github.com/wishkit/wishkit-ios)** by Martin Lasek. The Swift SDK in `Sources/OpenWish/` is a fork of the upstream WishKit package (renamed from `WishKit` → `OpenWish`) and talks to whatever host you point it at — this is what you deploy on the other end.
 
 ---
 
@@ -149,23 +149,23 @@ curl -X POST https://<your-host>/api/admin/projects/bootstrap \
   -d '{"name":"My App","slug":"my-app","watermarkEnabled":false}'
 ```
 
-The response carries the `apiKey` you pass to `WishKit.configure(with:apiUrl:)`.
+The response carries the `apiKey` you pass to `OpenWish.configure(with:apiUrl:)`.
 
 ---
 
 ## What's exposed publicly
 
-### SDK surface (the iOS apps using WishKit)
+### SDK surface (the iOS apps using OpenWish)
 
 Auth: `x-wishkit-api-key` + `x-wishkit-uuid`. Rate-limited per (apiKey, uuid) and per apiKey.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/wish/list` | Existing WishKit contract |
-| POST | `/api/wish/create` | Existing WishKit contract |
-| POST | `/api/wish/vote` | Existing WishKit contract |
-| POST | `/api/comment/create` | Existing WishKit contract |
-| POST | `/api/user/update` | Existing WishKit contract |
+| GET | `/api/wish/list` | Existing OpenWish contract |
+| POST | `/api/wish/create` | Existing OpenWish contract |
+| POST | `/api/wish/vote` | Existing OpenWish contract |
+| POST | `/api/comment/create` | Existing OpenWish contract |
+| POST | `/api/user/update` | Existing OpenWish contract |
 | POST | `/api/bug/screenshot` | Raw image bytes (`image/jpeg|png|heic|webp`, ≤5 MB). Returns the R2 key. |
 | POST | `/api/bug/create` | JSON `{ title, description, email?, screenshotKeys[] }` |
 | GET | `/api/bug/list` | Filtered to the caller's UUID — users see only their own reports |
@@ -224,5 +224,5 @@ pnpm build      # regenerates routeTree.gen.ts and bundles for Cloudflare
 
 ## Credits
 
-- **WishKit Swift package** — © 2023 Martin Lasek, [MIT-licensed](https://github.com/wishkit/wishkit-ios/blob/main/LICENSE). The package in `Sources/WishKit/` and `wishkit-ios-shared` 1.5.0 stay upstream-aligned beyond the `apiUrl` parameter and the `BugReportView` addition. If you use OpenWish, please also support the upstream project at https://github.com/wishkit/wishkit-ios.
+- **WishKit** (the upstream Swift library this fork is based on) — © 2023 Martin Lasek, [MIT-licensed](https://github.com/wishkit/wishkit-ios/blob/main/LICENSE). The package in `Sources/OpenWish/` is a renamed fork; `wishkit-ios-shared` 1.5.0 is consumed unmodified. Please also star/sponsor the upstream project at https://github.com/wishkit/wishkit-ios.
 - **OpenWish server, dashboard, and bug-report extensions** — same MIT license; see the repo root `LICENSE`.

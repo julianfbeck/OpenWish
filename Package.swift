@@ -2,21 +2,21 @@
 import PackageDescription
 
 let package = Package(
-    name: "wishkit-ios",
+    name: "openwish",
     platforms: [
         .macOS(.v12),
         .iOS(.v14)
     ],
     products: [
-        .library(name: "WishKit", targets: ["WishKit"])
+        .library(name: "OpenWish", targets: ["OpenWish"])
     ],
     dependencies: [
         .package(url: "https://github.com/wishkit/wishkit-ios-shared.git", exact: "1.5.0")
     ],
     targets: [
-        .target(name: "WishKit", dependencies: [
+        .target(name: "OpenWish", dependencies: [
             .product(name: "WishKitShared", package: "wishkit-ios-shared")
         ]),
-        .testTarget(name: "WishKitTests", dependencies: [.target(name: "WishKit")]),
+        .testTarget(name: "OpenWishTests", dependencies: [.target(name: "OpenWish")]),
     ]
 )

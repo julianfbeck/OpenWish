@@ -1,24 +1,24 @@
 ---
 name: openwish-ios
-description: Wire WishKit + the OpenWish self-hosted Cloudflare backend into a Swift/SwiftUI iOS app. Use when the user wants to add in-app feature requests or bug reports backed by an OpenWish deployment, points an existing WishKit integration at their own host, or adds the bug-report sheet (with screenshot uploads) to their app.
+description: Wire OpenWish + the OpenWish self-hosted Cloudflare backend into a Swift/SwiftUI iOS app. Use when the user wants to add in-app feature requests or bug reports backed by an OpenWish deployment, points an existing OpenWish integration at their own host, or adds the bug-report sheet (with screenshot uploads) to their app.
 ---
 
 # OpenWish iOS client integration
 
-OpenWish is the self-hosted Cloudflare backend for [WishKit](https://github.com/wishkit/wishkit-ios). The iOS side is the upstream WishKit Swift package with two additions:
+OpenWish is a fork of [WishKit](https://github.com/wishkit/wishkit-ios) (Martin Lasek's MIT-licensed SwiftUI feedback library) renamed to `OpenWish` and paired with a self-hosted Cloudflare backend. The iOS side is the upstream WishKit Swift package with two additions:
 
-- `WishKit.configure(with:apiUrl:)` — point the SDK at your OpenWish host instead of `wishkit.io`.
-- `WishKit.BugReportView()` — a new submit-only sheet that lets users file bug reports with up to **4 screenshots**, optional contact email, and view their previously-submitted bugs with admin replies.
+- `OpenWish.configure(with:apiUrl:)` — point the SDK at your OpenWish host instead of `wishkit.io`.
+- `OpenWish.BugReportView()` — a new submit-only sheet that lets users file bug reports with up to **4 screenshots**, optional contact email, and view their previously-submitted bugs with admin replies.
 
-The existing `WishKit.FeedbackListView()` for feature requests / wishes is unchanged from upstream WishKit and works against an OpenWish host because the API contract is preserved byte-for-byte.
+The existing `OpenWish.FeedbackListView()` for feature requests / wishes is the upstream WishKit list view, and works against an OpenWish host because the API contract is preserved byte-for-byte.
 
 ## When to invoke this skill
 
-- "Add WishKit to this iOS app and point it at my OpenWish server"
+- "Add OpenWish to this iOS app and point it at my OpenWish server"
 - "Show feature requests / a bug report sheet in my app"
 - "Add screenshot uploads to my feedback form"
-- "Wire `WishKit.configure` to my Cloudflare backend at https://feedback.example.com/api"
-- Any time the user references `OpenWish`, `wishkit.juli.sh`, or a self-hosted WishKit-style backend.
+- "Wire `OpenWish.configure` to my Cloudflare backend at https://feedback.example.com/api"
+- Any time the user references `OpenWish`, `WishKit`, `wishkit.juli.sh`, or a self-hosted WishKit-style backend.
 
 ## Pre-requisites the user must have
 
@@ -27,15 +27,15 @@ The existing `WishKit.FeedbackListView()` for feature requests / wishes is uncha
 3. **iOS deployment target ≥ 16** if they want the screenshot picker. The bug-report compose form gracefully degrades on iOS 14/15 (text-only — the picker shows a `Screenshot uploads require iOS 16 or newer.` hint).
 4. **iOS deployment target ≥ 15** for the bug-report list / detail screens (uses `@Environment(\.dismiss)` and async/await on URLSession).
 
-If they're below iOS 15, only the existing WishKit feature-request flow is available.
+If they're below iOS 15, only the feature-request flow is available.
 
-## Step 1 — add the WishKit Swift package
+## Step 1 — add the OpenWish Swift package
 
 Two flavours:
 
-### A. Use the upstream WishKit package
+### A. Use the published OpenWish package
 
-If your fork of WishKit is the canonical OpenWish-aware build, add it via Xcode → File → Add Package Dependencies → URL `https://github.com/wishkit/wishkit-ios.git` (or the OpenWish fork URL). When upstream eventually merges the `apiUrl` patch and the bug-report view, this is the only step needed.
+In Xcode → File → Add Package Dependencies → URL `https://github.com/julianfbeck/OpenWish.git`, pin to `from: "1.0.0"`, then depend on the `OpenWish` product.
 
 ### B. Use the local OpenWish repository
 
@@ -45,7 +45,7 @@ If the user is in this monorepo (or has it cloned locally), add a local package 
 .package(path: "../OpenWish")
 ```
 
-…and depend on the `WishKit` product. Xcode handles this via File → Add Local Package... The example app at `ExampleApp/openwish` does exactly this.
+…and depend on the `OpenWish` product. Xcode handles this via File → Add Local Package... The example app at `ExampleApp/openwish` does exactly this.
 
 ## Step 2 — configure at app launch
 
@@ -53,12 +53,12 @@ Edit the `@main` `App` struct (or the `AppDelegate` `application(_:didFinishLaun
 
 ```swift
 import SwiftUI
-import WishKit
+import OpenWish
 
 @main
 struct MyApp: App {
     init() {
-        WishKit.configure(
+        OpenWish.configure(
             with: "ow_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",   // Project API key from the OpenWish dashboard
             apiUrl: "https://feedback.example.com/api"           // Your OpenWish host + /api
         )
@@ -73,7 +73,7 @@ struct MyApp: App {
 **Important**:
 - `apiUrl` must be `https://<your-host>/api` — include `/api`, no trailing slash.
 - The API key is bound to a single project. If the app supports multiple environments (dev/prod) configure once per build configuration, e.g. via an `xcconfig`-driven `Bundle.main.object(forInfoDictionaryKey:)` lookup.
-- Calling `WishKit.configure` more than once is fine — it just updates the static state.
+- Calling `OpenWish.configure` more than once is fine — it just updates the static state.
 
 ## Step 3 — surface the SwiftUI views
 
@@ -81,7 +81,7 @@ Both views must be presented inside a `NavigationStack` because their internal "
 
 ```swift
 import SwiftUI
-import WishKit
+import OpenWish
 
 struct ContentView: View {
     @State private var showFeedback = false
@@ -95,37 +95,37 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
         }
         .sheet(isPresented: $showFeedback) {
-            NavigationStack { WishKit.FeedbackListView() }
+            NavigationStack { OpenWish.FeedbackListView() }
         }
         .sheet(isPresented: $showBug) {
-            NavigationStack { WishKit.BugReportView() }
+            NavigationStack { OpenWish.BugReportView() }
         }
     }
 }
 ```
 
-`WishKit.BugReportView()` opens to a list of the **current user's** bug reports (filtered server-side by `x-wishkit-uuid`). The "+" floating button pushes the compose form. Tapping a row pushes a detail screen showing description, status pill, and admin replies in a chat thread.
+`OpenWish.BugReportView()` opens to a list of the **current user's** bug reports (filtered server-side by `x-wishkit-uuid`). The "+" floating button pushes the compose form. Tapping a row pushes a detail screen showing description, status pill, and admin replies in a chat thread.
 
 ## Step 4 — (optional) identify the user
 
-WishKit/OpenWish key submissions by an SDK-managed UUID stored on the device. To attach extra context the admin can see, call any of these once you know the user (e.g. after sign-in):
+OpenWish keys submissions by an SDK-managed UUID stored on the device. To attach extra context the admin can see, call any of these once you know the user (e.g. after sign-in):
 
 ```swift
-WishKit.updateUser(email: "user@example.com")    // shows up under "Reported by" in the bug detail dialog
-WishKit.updateUser(name: "Jane Doe")
-WishKit.updateUser(customID: "internal-id-123")  // your own correlation id
+OpenWish.updateUser(email: "user@example.com")    // shows up under "Reported by" in the bug detail dialog
+OpenWish.updateUser(name: "Jane Doe")
+OpenWish.updateUser(customID: "internal-id-123")  // your own correlation id
 ```
 
 Skip this if you want fully anonymous reports — the SDK still works.
 
 ## Step 5 — (optional) theming
 
-The SDK ships with a configurable `WishKit.theme` (primary color, surfaces, etc.) and `WishKit.config.buttons.addButton.location` (`.floating` or `.navigationBar`). Set these once at app launch alongside `configure`. Defaults match the OpenWish dark theme reasonably well; only override if your app's brand is bright-mode primary.
+The SDK ships with a configurable `OpenWish.theme` (primary color, surfaces, etc.) and `OpenWish.config.buttons.addButton.location` (`.floating` or `.navigationBar`). Set these once at app launch alongside `configure`. Defaults match the OpenWish dark theme reasonably well; only override if your app's brand is bright-mode primary.
 
 ## What the user gets
 
-- **Feature requests** — `WishKit.FeedbackListView()` shows the public roadmap board, a state-filter chip strip (`All / Pending / In review / Planned / In progress / Completed` with counts), upvoting, comments, and a "+" to submit a new wish. State changes you make in the OpenWish dashboard show up here in real time (after the user pulls to refresh).
-- **Bug reports** — `WishKit.BugReportView()` is submit-first with a list of the user's own reports underneath. Reports include up to 4 screenshots; admin replies show as bubbles with an "Admin" pill.
+- **Feature requests** — `OpenWish.FeedbackListView()` shows the public roadmap board, a state-filter chip strip (`All / Pending / In review / Planned / In progress / Completed` with counts), upvoting, comments, and a "+" to submit a new wish. State changes you make in the OpenWish dashboard show up here in real time (after the user pulls to refresh).
+- **Bug reports** — `OpenWish.BugReportView()` is submit-first with a list of the user's own reports underneath. Reports include up to 4 screenshots; admin replies show as bubbles with an "Admin" pill.
 - **Push-style updates** — there's no APNS today; the user sees admin updates on next list fetch (or pull-to-refresh).
 - **Email follow-up** — when the user fills the optional Email field on a bug report, the admin can reply directly to that address from the dashboard's "Reported by" link.
 
@@ -139,26 +139,26 @@ The SDK ships with a configurable `WishKit.theme` (primary color, surfaces, etc.
 
 ## Common pitfalls
 
-- **`401 missingApiHeaderKey`** — `WishKit.configure(with:)` wasn't called before the first SDK call, or the wrong string was passed. The API key must start with `ow_api_`. The project slug is **not** an API key.
+- **`401 missingApiHeaderKey`** — `OpenWish.configure(with:)` wasn't called before the first SDK call, or the wrong string was passed. The API key must start with `ow_api_`. The project slug is **not** an API key.
 - **`401` from a project that worked yesterday** — the dashboard might have deleted the project; create a new one and update the key.
 - **`429 Retry-After: …` in the Xcode console** — the OpenWish rate limiter tripped. Caps are 30 writes/minute and 120 reads/minute per device. Either back off or increase the caps in `apps/web/src/server/rate-limit.ts`.
-- **Feedback sheet shows but the floating "+" does nothing** — `WishKit.FeedbackListView()` was rendered without a surrounding `NavigationStack`. Wrap it.
+- **Feedback sheet shows but the floating "+" does nothing** — `OpenWish.FeedbackListView()` was rendered without a surrounding `NavigationStack`. Wrap it.
 - **`keyNotFound("id")` on comment/vote/bug response decode** — happens when the server returns an error envelope (`{reason:"…"}`) and the SDK tries to decode it as a success type. Look at the worker's `wrangler tail` for the actual reason. Common causes: rate limited, project deleted, invalid wishId/screenshotKey.
 - **Screenshot uploads fail with `400`** — content-type not in `image/jpeg|png|heic|webp`, or body > 5 MB. The bug-report sheet does magic-number sniffing client-side; if you're calling the SDK manually, set the right `Content-Type`.
 - **Screenshot uploads fail with `413`** — body exceeded 5 MB. Resize before uploading.
 
 ## File pointers
 
-- `Sources/WishKit/WishKit.swift` — public surface, `configure`, `FeedbackListView`, `BugReportView`.
-- `Sources/WishKit/API/BugApi.swift` — bug create + screenshot upload + list endpoints.
-- `Sources/WishKit/Bug/CreateBugRequest.swift` — request shape (`title`, `description`, `email?`, `screenshotKeys[]`).
-- `Sources/WishKit/SwiftUI/BugReportView.swift` — the list/compose/detail SwiftUI views.
+- `Sources/OpenWish/OpenWish.swift` — public surface, `configure`, `FeedbackListView`, `BugReportView`.
+- `Sources/OpenWish/API/BugApi.swift` — bug create + screenshot upload + list endpoints.
+- `Sources/OpenWish/Bug/CreateBugRequest.swift` — request shape (`title`, `description`, `email?`, `screenshotKeys[]`).
+- `Sources/OpenWish/SwiftUI/BugReportView.swift` — the list/compose/detail SwiftUI views.
 - `apps/web/README.md` — server hosting docs.
 - `ExampleApp/openwish/openwish/` — minimal reference Xcode project (gitignored, but checked-out in the monorepo).
 
 ## What NOT to do
 
-- Don't depend on `wishkit-ios-shared` for the bug types — those live under `Sources/WishKit/Bug/` because shared 1.5.0 is locked. Always import from the WishKit package directly.
-- Don't try to call `/api/wish/list` or any SDK route from the app's own networking layer to "skip WishKit" — the SDK adds the required `x-wishkit-uuid` and signature headers, and the server returns 401 without them.
+- Don't depend on `wishkit-ios-shared` for the bug types — those live under `Sources/OpenWish/Bug/` because shared 1.5.0 is locked. Always import from the OpenWish package directly.
+- Don't try to call `/api/wish/list` or any SDK route from the app's own networking layer to "skip OpenWish" — the SDK adds the required `x-wishkit-uuid` and signature headers, and the server returns 401 without them.
 - Don't hard-code admin tokens or the bootstrap token into the app. Both are server-only secrets.
 - Don't build the BugReportView inside a `Sheet` without a `NavigationStack`. The "+" is a `NavigationLink` and silently does nothing without one.
