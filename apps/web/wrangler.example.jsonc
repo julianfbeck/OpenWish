@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openwish",
+  "compatibility_date": "2026-04-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.ts",
+  // Copy this file to wrangler.jsonc and replace every "<...>" placeholder
+  // with the values from your own Cloudflare resources (run the wrangler
+  // commands in apps/web/README.md to provision them). wrangler.jsonc is
+  // gitignored so your private values never make it back into git.
+  "routes": [
+    { "pattern": "wishkit.example.com", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openwish",
+      "database_id": "<from `wrangler d1 create openwish`>",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUGS_BUCKET",
+      "bucket_name": "openwish-bugs"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "<from `wrangler kv namespace create openwish-ratelimit`>"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "NOTIFICATION_EMAIL"
+    }
+  ],
+  "vars": {
+    "OPENWISH_CORS_ORIGIN": "https://wishkit.example.com",
+    "OPENWISH_NOTIFICATION_FROM": "noreply@example.com",
+    "OPENWISH_DASHBOARD_URL": "https://wishkit.example.com",
+    "OPENWISH_PASSKEY_RP_ID": "wishkit.example.com",
+    "OPENWISH_PASSKEY_RP_NAME": "OpenWish",
+    "OPENWISH_TURNSTILE_SITE_KEY": "<from dash.cloudflare.com → Turnstile>"
+  }
+}

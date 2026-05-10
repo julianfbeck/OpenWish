@@ -5,8 +5,11 @@ import type { Bindings, ProjectRow } from "./types";
 
 type NotificationKind = "wish" | "bug" | "test";
 
-const DEFAULT_FROM = "noreply@juli.sh";
-const DEFAULT_DASHBOARD = "https://wishkit.juli.sh";
+// Fallbacks used only when the corresponding env vars aren't set in
+// wrangler.jsonc. Production deploys override these via OPENWISH_NOTIFICATION_FROM
+// and OPENWISH_DASHBOARD_URL.
+const DEFAULT_FROM = "noreply@example.com";
+const DEFAULT_DASHBOARD = "https://wishkit.example.com";
 
 function fromAddress(env: Bindings) {
   return env.OPENWISH_NOTIFICATION_FROM ?? DEFAULT_FROM;

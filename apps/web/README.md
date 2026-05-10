@@ -34,6 +34,10 @@ That's it — no Docker, no Postgres, no separate Node/Bun host. The whole stack
 All commands assume you're inside `apps/web`. Replace `openwish` / `openwish-bugs` / `openwish-ratelimit` with your own resource names if you prefer.
 
 ```bash
+# 0) Copy the wrangler config template. wrangler.jsonc is gitignored so
+#    your D1/KV/R2 ids and custom domain stay out of version control.
+cp wrangler.example.jsonc wrangler.jsonc
+
 # 1) D1 database
 pnpm exec wrangler d1 create openwish
 # → copy the printed `database_id` into wrangler.jsonc under d1_databases[0].database_id

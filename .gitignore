@@ -7,3 +7,9 @@ apps/web/dist/
 .wrangler/
 .dev.vars
 ExampleApp/
+
+# Real Wrangler config — keeps your custom domain, D1/R2/KV ids, and
+# Turnstile site key out of git. New clones should copy
+# apps/web/wrangler.example.jsonc → apps/web/wrangler.jsonc and fill in
+# their own values.
+apps/web/wrangler.jsonc

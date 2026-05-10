@@ -18,7 +18,7 @@ The existing `OpenWish.FeedbackListView()` for feature requests / wishes is the 
 - "Show feature requests / a bug report sheet in my app"
 - "Add screenshot uploads to my feedback form"
 - "Wire `OpenWish.configure` to my Cloudflare backend at https://feedback.example.com/api"
-- Any time the user references `OpenWish`, `WishKit`, `wishkit.juli.sh`, or a self-hosted WishKit-style backend.
+- Any time the user references `OpenWish`, `WishKit`, or a self-hosted WishKit-style backend.
 
 ## Pre-requisites the user must have
 
