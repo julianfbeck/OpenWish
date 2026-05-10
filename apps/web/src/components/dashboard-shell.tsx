@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { ProjectSummary } from "@openwish/shared";
 import { Link } from "@tanstack/react-router";
-import { BarChart3, Bug, FolderKanban, LayoutPanelTop } from "lucide-react";
+import { BarChart3, Bug, FolderKanban, LayoutPanelTop, Settings } from "lucide-react";
 
 import { Button } from "#/components/ui/button";
 import {
@@ -17,12 +17,13 @@ import { assignLocation } from "#/lib/navigation";
 import { cn } from "#/lib/utils";
 
 type DashboardShellProps = {
-  active: "board" | "bugs" | "analytics" | "projects";
+  active: "board" | "bugs" | "analytics" | "settings" | "projects";
   children: ReactNode;
   actions?: ReactNode;
   sessionUsername: string;
   projectName?: string;
   projectSlug?: string;
+  projectIconUrl?: string | null;
   projects: ProjectSummary[];
 };
 
@@ -47,6 +48,10 @@ function bugsHref(projectSlug?: string) {
   return projectSlug ? `/dashboard/${projectSlug}/bugs` : "/dashboard/projects";
 }
 
+function settingsHref(projectSlug?: string) {
+  return projectSlug ? `/dashboard/${projectSlug}/settings` : "/dashboard/projects";
+}
+
 function hrefForActive(active: DashboardShellProps["active"], slug: string) {
   switch (active) {
     case "board":
@@ -55,6 +60,8 @@ function hrefForActive(active: DashboardShellProps["active"], slug: string) {
       return `/dashboard/${slug}/bugs`;
     case "analytics":
       return `/dashboard/${slug}/analytics`;
+    case "settings":
+      return `/dashboard/${slug}/settings`;
     case "projects":
       return `/dashboard/${slug}`;
   }
@@ -67,21 +74,29 @@ export function DashboardShell({
   sessionUsername,
   projectName,
   projectSlug,
+  projectIconUrl,
   projects,
 }: DashboardShellProps) {
   const selectValue =
     projectSlug && projects.some((project) => project.slug === projectSlug)
       ? projectSlug
       : undefined;
+  const activeIconUrl =
+    projectIconUrl ??
+    (selectValue
+      ? (projects.find((project) => project.slug === selectValue)?.appIconUrl ?? null)
+      : null);
 
   return (
     <main className="min-h-screen bg-black text-neutral-100">
       <div className="grid min-h-screen lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="border-b border-white/10 px-5 py-6 lg:border-b-0 lg:border-r">
           <Link to="/dashboard/projects" className="flex items-center gap-2">
-            <div className="grid size-7 place-items-center rounded-md bg-white text-xs font-semibold text-black">
-              OW
-            </div>
+            <img
+              src="/openwish-icon-dark-192.png"
+              alt=""
+              className="size-7 rounded-md"
+            />
             <span className="text-sm font-medium tracking-tight text-white">OpenWish</span>
           </Link>
 
@@ -98,12 +113,30 @@ export function DashboardShell({
                   size="sm"
                   className="h-9 w-full border-white/10 bg-neutral-950 text-sm text-neutral-100"
                 >
-                  <SelectValue placeholder={projectName ?? "Select project"} />
+                  <span className="flex min-w-0 items-center gap-2">
+                    {activeIconUrl ? (
+                      <img
+                        src={activeIconUrl}
+                        alt=""
+                        className="size-5 shrink-0 rounded-sm border border-white/10"
+                      />
+                    ) : null}
+                    <SelectValue placeholder={projectName ?? "Select project"} />
+                  </span>
                 </SelectTrigger>
                 <SelectContent className="border-white/10 bg-neutral-950 text-neutral-100">
                   {projects.map((project) => (
                     <SelectItem key={project.slug} value={project.slug}>
-                      {project.name}
+                      <span className="flex items-center gap-2">
+                        {project.appIconUrl ? (
+                          <img
+                            src={project.appIconUrl}
+                            alt=""
+                            className="size-4 rounded-sm border border-white/10"
+                          />
+                        ) : null}
+                        {project.name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -123,6 +156,10 @@ export function DashboardShell({
             <Link className={navClass(active === "analytics")} to={analyticsHref(projectSlug)}>
               <BarChart3 className="size-4" />
               Analytics
+            </Link>
+            <Link className={navClass(active === "settings")} to={settingsHref(projectSlug)}>
+              <Settings className="size-4" />
+              Settings
             </Link>
             <Link className={navClass(active === "projects")} to="/dashboard/projects">
               <FolderKanban className="size-4" />
@@ -145,7 +182,9 @@ export function DashboardShell({
                   ? "Bugs"
                   : active === "analytics"
                     ? "Analytics"
-                    : "Projects"}
+                    : active === "settings"
+                      ? "Settings"
+                      : "Projects"}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               {actions}

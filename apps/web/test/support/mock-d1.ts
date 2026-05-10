@@ -276,7 +276,7 @@ export class MockD1Database {
   async all<Row>(sql: string, bindings: unknown[]): Promise<QueryResult<Row>> {
     const normalized = normalizeSql(sql);
 
-    if (normalized.includes("SELECT slug, name, watermark_enabled, api_key, created_at FROM projects")) {
+    if (normalized.includes("SELECT slug, name, watermark_enabled, api_key, app_icon_url, created_at FROM projects")) {
       const results = [...this.state.projects]
         .sort((left, right) => {
           const dateDiff = descDate(left.created_at, right.created_at);
@@ -286,11 +286,12 @@ export class MockD1Database {
 
           return left.name.localeCompare(right.name);
         })
-        .map(({ slug, name, watermark_enabled, api_key, created_at }) => ({
+        .map(({ slug, name, watermark_enabled, api_key, app_icon_url, created_at }) => ({
           slug,
           name,
           watermark_enabled,
           api_key,
+          app_icon_url,
           created_at,
         }));
 
@@ -508,6 +509,10 @@ export class MockD1Database {
         watermark_enabled: Number(bindings[5]),
         notification_email: null,
         public_form_enabled: 0,
+        app_store_url: null,
+        app_id: null,
+        app_name: null,
+        app_icon_url: null,
         created_at: String(bindings[6]),
         updated_at: String(bindings[7]),
       });
@@ -537,6 +542,23 @@ export class MockD1Database {
       const project = this.state.projects.find((entry) => entry.id === projectId);
       if (project) {
         project.public_form_enabled = Number(enabled);
+        project.updated_at = String(updatedAt);
+      }
+      return { success: true };
+    }
+
+    if (
+      normalized.includes(
+        "UPDATE projects SET app_store_url = ?, app_id = ?, app_name = ?, app_icon_url = ?, updated_at = ? WHERE id = ?",
+      )
+    ) {
+      const [appStoreUrl, appId, appName, appIconUrl, updatedAt, projectId] = bindings;
+      const project = this.state.projects.find((entry) => entry.id === projectId);
+      if (project) {
+        project.app_store_url = appStoreUrl === null || appStoreUrl === undefined ? null : String(appStoreUrl);
+        project.app_id = appId === null || appId === undefined ? null : String(appId);
+        project.app_name = appName === null || appName === undefined ? null : String(appName);
+        project.app_icon_url = appIconUrl === null || appIconUrl === undefined ? null : String(appIconUrl);
         project.updated_at = String(updatedAt);
       }
       return { success: true };

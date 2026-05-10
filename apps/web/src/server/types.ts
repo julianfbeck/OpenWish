@@ -50,6 +50,10 @@ export type ProjectRow = {
   watermark_enabled: number;
   notification_email: string | null;
   public_form_enabled: number;
+  app_store_url: string | null;
+  app_id: string | null;
+  app_name: string | null;
+  app_icon_url: string | null;
   created_at: string;
   updated_at: string;
 };

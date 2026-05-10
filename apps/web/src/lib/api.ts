@@ -134,6 +134,7 @@ export type ProjectSettingsPatch = {
   watermarkEnabled?: boolean;
   notificationEmail?: string | null;
   publicFormEnabled?: boolean;
+  appStoreUrl?: string | null;
 };
 
 export async function updateProjectSettings(

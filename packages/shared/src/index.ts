@@ -189,12 +189,19 @@ export const adminProjectSettingsSchema = z
       .or(z.null())
       .optional(),
     publicFormEnabled: z.boolean().optional(),
+    appStoreUrl: z
+      .string()
+      .url()
+      .or(z.literal(""))
+      .or(z.null())
+      .optional(),
   })
   .refine(
     (value) =>
       value.watermarkEnabled !== undefined ||
       value.notificationEmail !== undefined ||
-      value.publicFormEnabled !== undefined,
+      value.publicFormEnabled !== undefined ||
+      value.appStoreUrl !== undefined,
     { message: "At least one settings field must be provided." },
   );
 export type AdminProjectSettings = z.infer<typeof adminProjectSettingsSchema>;
@@ -211,6 +218,10 @@ export const adminProjectResponseSchema = z.object({
     watermarkEnabled: z.boolean(),
     notificationEmail: z.string().nullable().optional(),
     publicFormEnabled: z.boolean().optional(),
+    appStoreUrl: z.string().nullable().optional(),
+    appId: z.string().nullable().optional(),
+    appName: z.string().nullable().optional(),
+    appIconUrl: z.string().nullable().optional(),
     createdAt: z.string().datetime(),
     totalUsers: z.number().int(),
     totalWishes: z.number().int(),
@@ -230,6 +241,7 @@ export const projectSummarySchema = z.object({
   name: z.string(),
   watermarkEnabled: z.boolean(),
   apiKey: z.string(),
+  appIconUrl: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
 });
 export type ProjectSummary = z.infer<typeof projectSummarySchema>;
@@ -401,6 +413,8 @@ export const publicFeedbackProjectSchema = z.object({
   slug: z.string(),
   enabled: z.boolean(),
   turnstileSiteKey: z.string().nullable(),
+  appName: z.string().nullable(),
+  appIconUrl: z.string().nullable(),
 });
 export type PublicFeedbackProject = z.infer<typeof publicFeedbackProjectSchema>;
 

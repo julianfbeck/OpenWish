@@ -86,13 +86,22 @@ export function DashboardProjectsPage() {
               <Card key={project.slug} className="border-white/10 bg-neutral-950">
                 <CardContent className="space-y-4 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-base font-medium text-white">
-                        {project.name}
-                      </h3>
-                      <p className="mt-0.5 text-xs text-neutral-500">
-                        {formatDate(project.createdAt)}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      {project.appIconUrl ? (
+                        <img
+                          src={project.appIconUrl}
+                          alt=""
+                          className="size-10 shrink-0 rounded-lg border border-white/10"
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <h3 className="truncate text-base font-medium text-white">
+                          {project.name}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-neutral-500">
+                          {formatDate(project.createdAt)}
+                        </p>
+                      </div>
                     </div>
                     <Button
                       variant="outline"

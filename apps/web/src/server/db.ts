@@ -36,6 +36,10 @@ const schemaStatements = [
     watermark_enabled INTEGER NOT NULL DEFAULT 0,
     notification_email TEXT,
     public_form_enabled INTEGER NOT NULL DEFAULT 0,
+    app_store_url TEXT,
+    app_id TEXT,
+    app_name TEXT,
+    app_icon_url TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
@@ -251,17 +255,25 @@ export async function bootstrapProject(
 export async function loadProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
   const result = await db
     .prepare(
-      `SELECT slug, name, watermark_enabled, api_key, created_at
+      `SELECT slug, name, watermark_enabled, api_key, app_icon_url, created_at
        FROM projects
        ORDER BY datetime(created_at) DESC, name ASC`,
     )
-    .all<{ slug: string; name: string; watermark_enabled: number; api_key: string; created_at: string }>();
+    .all<{
+      slug: string;
+      name: string;
+      watermark_enabled: number;
+      api_key: string;
+      app_icon_url: string | null;
+      created_at: string;
+    }>();
 
   return (result.results ?? []).map((project) => ({
     slug: project.slug,
     name: project.name,
     watermarkEnabled: project.watermark_enabled === 1,
     apiKey: project.api_key,
+    appIconUrl: project.app_icon_url ?? null,
     createdAt: project.created_at,
   }));
 }
@@ -602,6 +614,10 @@ export async function updateProjectSettings(
     watermarkEnabled?: boolean;
     notificationEmail?: string | null;
     publicFormEnabled?: boolean;
+    appStoreUrl?: string | null;
+    appId?: string | null;
+    appName?: string | null;
+    appIconUrl?: string | null;
   },
 ) {
   if (patch.watermarkEnabled !== undefined) {
@@ -622,6 +638,31 @@ export async function updateProjectSettings(
     await db
       .prepare(`UPDATE projects SET public_form_enabled = ?, updated_at = ? WHERE id = ?`)
       .bind(patch.publicFormEnabled ? 1 : 0, nowIso(), projectId)
+      .run();
+  }
+
+  // App Store metadata is treated as a single tuple — the admin route resolves
+  // the URL to id/name/icon and sends all four together (or all four nulls when
+  // clearing). We persist them in one statement so a half-resolved state never
+  // sticks around between writes.
+  if (
+    patch.appStoreUrl !== undefined ||
+    patch.appId !== undefined ||
+    patch.appName !== undefined ||
+    patch.appIconUrl !== undefined
+  ) {
+    await db
+      .prepare(
+        `UPDATE projects SET app_store_url = ?, app_id = ?, app_name = ?, app_icon_url = ?, updated_at = ? WHERE id = ?`,
+      )
+      .bind(
+        patch.appStoreUrl ?? null,
+        patch.appId ?? null,
+        patch.appName ?? null,
+        patch.appIconUrl ?? null,
+        nowIso(),
+        projectId,
+      )
       .run();
   }
 }
@@ -660,6 +701,10 @@ export async function loadAdminProject(
       watermarkEnabled: project.watermark_enabled === 1,
       notificationEmail: project.notification_email ?? null,
       publicFormEnabled: project.public_form_enabled === 1,
+      appStoreUrl: project.app_store_url ?? null,
+      appId: project.app_id ?? null,
+      appName: project.app_name ?? null,
+      appIconUrl: project.app_icon_url ?? null,
       createdAt: project.created_at,
       totalUsers: userCount?.count ?? 0,
       totalWishes: listWishResponse.list.length,

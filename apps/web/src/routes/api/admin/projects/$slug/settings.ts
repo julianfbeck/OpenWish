@@ -1,6 +1,7 @@
 import { adminProjectSettingsSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { resolveAppStoreMetadata } from "#/server/app-store";
 import { requireAdminProject } from "#/server/auth";
 import { loadAdminProject, loadProjectById, updateProjectSettings } from "#/server/db";
 import { parseJson, publicError } from "#/server/http";
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/settings")({
           return bodyResult.response;
         }
 
-        const patch = {
+        const patch: Parameters<typeof updateProjectSettings>[2] = {
           watermarkEnabled: bodyResult.data.watermarkEnabled,
           notificationEmail:
             bodyResult.data.notificationEmail === undefined
@@ -38,6 +39,29 @@ export const Route = createFileRoute("/api/admin/projects/$slug/settings")({
                 : bodyResult.data.notificationEmail,
           publicFormEnabled: bodyResult.data.publicFormEnabled,
         };
+
+        // App Store URL: empty string / null clears all four columns; a non-empty
+        // URL gets resolved synchronously via the iTunes Search API. If resolution
+        // fails (bad URL, network issue) we still persist the raw URL but null
+        // out the cached metadata, so the admin sees the failure on next reload.
+        if (bodyResult.data.appStoreUrl !== undefined) {
+          const trimmed =
+            typeof bodyResult.data.appStoreUrl === "string"
+              ? bodyResult.data.appStoreUrl.trim()
+              : "";
+          if (trimmed === "" || bodyResult.data.appStoreUrl === null) {
+            patch.appStoreUrl = null;
+            patch.appId = null;
+            patch.appName = null;
+            patch.appIconUrl = null;
+          } else {
+            const resolved = await resolveAppStoreMetadata(trimmed);
+            patch.appStoreUrl = trimmed;
+            patch.appId = resolved?.appId ?? null;
+            patch.appName = resolved?.appName ?? null;
+            patch.appIconUrl = resolved?.appIconUrl ?? null;
+          }
+        }
 
         await updateProjectSettings(requestContext.env.DB, projectResult.project.id, patch);
 

@@ -69,6 +69,48 @@ function FeedbackPage() {
     };
   }, [slug]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const previousTitle = document.title;
+    if (project?.appName) {
+      document.title = `Send feedback — ${project.appName}`;
+    } else if (project?.name) {
+      document.title = `Send feedback — ${project.name}`;
+    }
+
+    let restoredHrefs: Array<{ link: HTMLLinkElement; href: string }> = [];
+    if (project?.appIconUrl) {
+      const links = document.head.querySelectorAll<HTMLLinkElement>(
+        'link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"]',
+      );
+      links.forEach((link) => {
+        restoredHrefs.push({ link, href: link.href });
+        link.href = project.appIconUrl!;
+      });
+      // If the host page had no icon link at all, add one for this view.
+      if (links.length === 0) {
+        const link = document.createElement("link");
+        link.rel = "icon";
+        link.href = project.appIconUrl;
+        link.dataset.openwishInjected = "true";
+        document.head.appendChild(link);
+        restoredHrefs.push({ link, href: "" });
+      }
+    }
+
+    return () => {
+      document.title = previousTitle;
+      restoredHrefs.forEach(({ link, href }) => {
+        if (link.dataset.openwishInjected === "true") {
+          link.remove();
+        } else {
+          link.href = href;
+        }
+      });
+    };
+  }, [project?.appIconUrl, project?.appName, project?.name]);
+
   return (
     <main className="grid min-h-screen place-items-center bg-black px-5 py-10 text-neutral-100">
       <Card className="w-full max-w-md border-white/10 bg-neutral-950">
@@ -273,18 +315,24 @@ function FeedbackForm({
     <>
       <CardHeader className="space-y-1">
         <div className="flex items-center gap-2">
-          <div className="grid size-7 place-items-center rounded-md bg-white text-xs font-semibold text-black">
-            OW
-          </div>
+          {project.appIconUrl ? (
+            <img
+              src={project.appIconUrl}
+              alt={`${project.appName ?? project.name} icon`}
+              className="size-7 rounded-md border border-white/10"
+            />
+          ) : (
+            <img src="/openwish-icon-dark-192.png" alt="" className="size-7 rounded-md" />
+          )}
           <span className="text-sm font-medium tracking-tight text-white">
-            {project.name}
+            {project.appName ?? project.name}
           </span>
         </div>
         <CardTitle className="pt-4 text-xl font-medium tracking-tight text-white">
           Send feedback
         </CardTitle>
         <p className="text-sm text-neutral-500">
-          Report a bug or suggest a feature for {project.name}.
+          Report a bug or suggest a feature for {project.appName ?? project.name}.
         </p>
       </CardHeader>
       <CardContent>

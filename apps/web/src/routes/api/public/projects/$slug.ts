@@ -34,6 +34,8 @@ export const Route = createFileRoute("/api/public/projects/$slug")({
           slug: project.slug,
           enabled: true,
           turnstileSiteKey: requestContext.env.OPENWISH_TURNSTILE_SITE_KEY ?? null,
+          appName: project.app_name ?? null,
+          appIconUrl: project.app_icon_url ?? null,
         };
 
         return Response.json(body);

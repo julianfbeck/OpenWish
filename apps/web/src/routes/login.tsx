@@ -75,9 +75,7 @@ export function LoginPage() {
       <Card className="w-full max-w-sm border-white/10 bg-neutral-950">
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="grid size-7 place-items-center rounded-md bg-white text-xs font-semibold text-black">
-              OW
-            </div>
+            <img src="/openwish-icon-dark-192.png" alt="" className="size-7 rounded-md" />
             <span className="text-sm font-medium tracking-tight text-white">OpenWish</span>
           </div>
           <CardTitle className="pt-4 text-xl font-medium tracking-tight text-white">
