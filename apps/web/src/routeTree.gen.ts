@@ -17,6 +17,7 @@ import { Route as FeedbackSlugRouteImport } from './routes/feedback.$slug'
 import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projects'
 import { Route as DashboardSlugRouteImport } from './routes/dashboard.$slug'
 import { Route as AdminSlugRouteImport } from './routes/admin.$slug'
+import { Route as DashboardSlugIndexRouteImport } from './routes/dashboard.$slug.index'
 import { Route as DashboardSlugSettingsRouteImport } from './routes/dashboard.$slug.settings'
 import { Route as DashboardSlugBugsRouteImport } from './routes/dashboard.$slug.bugs'
 import { Route as DashboardSlugAnalyticsRouteImport } from './routes/dashboard.$slug.analytics'
@@ -94,6 +95,11 @@ const AdminSlugRoute = AdminSlugRouteImport.update({
   id: '/admin/$slug',
   path: '/admin/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardSlugIndexRoute = DashboardSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardSlugRoute,
 } as any)
 const DashboardSlugSettingsRoute = DashboardSlugSettingsRouteImport.update({
   id: '/settings',
@@ -322,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/$slug/analytics': typeof DashboardSlugAnalyticsRoute
   '/dashboard/$slug/bugs': typeof DashboardSlugBugsRoute
   '/dashboard/$slug/settings': typeof DashboardSlugSettingsRoute
+  '/dashboard/$slug/': typeof DashboardSlugIndexRoute
   '/api/admin/projects/$slug': typeof ApiAdminProjectsSlugRouteWithChildren
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
@@ -350,7 +357,6 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/admin/$slug': typeof AdminSlugRoute
-  '/dashboard/$slug': typeof DashboardSlugRouteWithChildren
   '/dashboard/projects': typeof DashboardProjectsRoute
   '/feedback/$slug': typeof FeedbackSlugRoute
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
@@ -369,6 +375,7 @@ export interface FileRoutesByTo {
   '/dashboard/$slug/analytics': typeof DashboardSlugAnalyticsRoute
   '/dashboard/$slug/bugs': typeof DashboardSlugBugsRoute
   '/dashboard/$slug/settings': typeof DashboardSlugSettingsRoute
+  '/dashboard/$slug': typeof DashboardSlugIndexRoute
   '/api/admin/projects/$slug': typeof ApiAdminProjectsSlugRouteWithChildren
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
@@ -417,6 +424,7 @@ export interface FileRoutesById {
   '/dashboard/$slug/analytics': typeof DashboardSlugAnalyticsRoute
   '/dashboard/$slug/bugs': typeof DashboardSlugBugsRoute
   '/dashboard/$slug/settings': typeof DashboardSlugSettingsRoute
+  '/dashboard/$slug/': typeof DashboardSlugIndexRoute
   '/api/admin/projects/$slug': typeof ApiAdminProjectsSlugRouteWithChildren
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
@@ -466,6 +474,7 @@ export interface FileRouteTypes {
     | '/dashboard/$slug/analytics'
     | '/dashboard/$slug/bugs'
     | '/dashboard/$slug/settings'
+    | '/dashboard/$slug/'
     | '/api/admin/projects/$slug'
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
@@ -494,7 +503,6 @@ export interface FileRouteTypes {
     | '/health'
     | '/login'
     | '/admin/$slug'
-    | '/dashboard/$slug'
     | '/dashboard/projects'
     | '/feedback/$slug'
     | '/api/admin/projects'
@@ -513,6 +521,7 @@ export interface FileRouteTypes {
     | '/dashboard/$slug/analytics'
     | '/dashboard/$slug/bugs'
     | '/dashboard/$slug/settings'
+    | '/dashboard/$slug'
     | '/api/admin/projects/$slug'
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
@@ -560,6 +569,7 @@ export interface FileRouteTypes {
     | '/dashboard/$slug/analytics'
     | '/dashboard/$slug/bugs'
     | '/dashboard/$slug/settings'
+    | '/dashboard/$slug/'
     | '/api/admin/projects/$slug'
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
@@ -671,6 +681,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/$slug'
       preLoaderRoute: typeof AdminSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/$slug/': {
+      id: '/dashboard/$slug/'
+      path: '/'
+      fullPath: '/dashboard/$slug/'
+      preLoaderRoute: typeof DashboardSlugIndexRouteImport
+      parentRoute: typeof DashboardSlugRoute
     }
     '/dashboard/$slug/settings': {
       id: '/dashboard/$slug/settings'
@@ -938,12 +955,14 @@ interface DashboardSlugRouteChildren {
   DashboardSlugAnalyticsRoute: typeof DashboardSlugAnalyticsRoute
   DashboardSlugBugsRoute: typeof DashboardSlugBugsRoute
   DashboardSlugSettingsRoute: typeof DashboardSlugSettingsRoute
+  DashboardSlugIndexRoute: typeof DashboardSlugIndexRoute
 }
 
 const DashboardSlugRouteChildren: DashboardSlugRouteChildren = {
   DashboardSlugAnalyticsRoute: DashboardSlugAnalyticsRoute,
   DashboardSlugBugsRoute: DashboardSlugBugsRoute,
   DashboardSlugSettingsRoute: DashboardSlugSettingsRoute,
+  DashboardSlugIndexRoute: DashboardSlugIndexRoute,
 }
 
 const DashboardSlugRouteWithChildren = DashboardSlugRoute._addFileChildren(

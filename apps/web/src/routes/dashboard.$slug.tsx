@@ -7,7 +7,11 @@ import { Download, Layers3, List } from "lucide-react";
 
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
-import { DashboardShell } from "#/components/dashboard-shell";
+import {
+  DashboardChrome,
+  DashboardPageHeader,
+  type DashboardTab,
+} from "#/components/dashboard-shell";
 import { RequestDetailDialog } from "#/components/request-detail-dialog";
 import {
   ApiRequestError,
@@ -60,12 +64,31 @@ function DashboardSlugRouteLayout() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { projects, sessionUsername } = useDashboardSession();
 
-  if (pathname !== `/dashboard/${slug}`) {
-    return <Outlet />;
-  }
+  const active: DashboardTab = pathname.endsWith("/bugs")
+    ? "bugs"
+    : pathname.endsWith("/analytics")
+      ? "analytics"
+      : pathname.endsWith("/settings")
+        ? "settings"
+        : "board";
+  const projectName = projects.find((project) => project.slug === slug)?.name;
 
-  return <DashboardBoardPage />;
+  // The chrome (sidebar + project switcher) is rendered once here and stays
+  // mounted while the <Outlet/> swaps tab content, so navigation no longer
+  // unmounts and re-flickers the project switcher.
+  return (
+    <DashboardChrome
+      active={active}
+      projects={projects}
+      sessionUsername={sessionUsername}
+      projectName={projectName}
+      projectSlug={slug}
+    >
+      <Outlet />
+    </DashboardChrome>
+  );
 }
 
 function WishCard({
@@ -129,7 +152,7 @@ function WishCard({
 
 export function DashboardBoardPage() {
   const { slug } = Route.useParams();
-  const { error: sessionError, isLoading, projects, sessionUsername } = useDashboardSession();
+  const { error: sessionError, isLoading } = useDashboardSession();
   const [data, setData] = useState<AdminProjectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("board");
@@ -232,13 +255,10 @@ export function DashboardBoardPage() {
   }
 
   return (
-    <DashboardShell
-      active="board"
-      projects={projects}
-      sessionUsername={sessionUsername}
-      projectName={data?.project.name ?? projects.find((project) => project.slug === slug)?.name}
-      projectSlug={slug}
-      actions={
+    <>
+      <DashboardPageHeader
+        title="Board"
+        actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -292,8 +312,8 @@ export function DashboardBoardPage() {
             </button>
           </div>
         </div>
-      }
-    >
+        }
+      />
       <section className="space-y-4">
         {sessionError || error ? (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -543,7 +563,7 @@ export function DashboardBoardPage() {
           }
         }}
       />
-    </DashboardShell>
+    </>
   );
 }
 

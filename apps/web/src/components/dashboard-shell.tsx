@@ -16,10 +16,11 @@ import { logoutDashboard } from "#/lib/api";
 import { assignLocation } from "#/lib/navigation";
 import { cn } from "#/lib/utils";
 
-type DashboardShellProps = {
-  active: "board" | "bugs" | "analytics" | "settings" | "projects";
+export type DashboardTab = "board" | "bugs" | "analytics" | "settings" | "projects";
+
+type DashboardChromeProps = {
+  active: DashboardTab;
   children: ReactNode;
-  actions?: ReactNode;
   sessionUsername: string;
   projectName?: string;
   projectSlug?: string;
@@ -51,7 +52,7 @@ function settingsHref(projectSlug?: string) {
   return projectSlug ? `/dashboard/${projectSlug}/settings` : "/dashboard/projects";
 }
 
-function hrefForActive(active: DashboardShellProps["active"], slug: string) {
+function hrefForActive(active: DashboardTab, slug: string) {
   switch (active) {
     case "board":
       return `/dashboard/${slug}`;
@@ -66,15 +67,36 @@ function hrefForActive(active: DashboardShellProps["active"], slug: string) {
   }
 }
 
-export function DashboardShell({
+// Per-page header (title + optional actions). Lives inside the chrome's content
+// area so it scrolls with the page; each route renders its own so the chrome
+// (sidebar) can stay mounted across tab navigations.
+export function DashboardPageHeader({
+  title,
+  actions,
+}: {
+  title: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h1 className="text-lg font-medium tracking-tight text-white">{title}</h1>
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </header>
+  );
+}
+
+// Persistent dashboard frame: logo, project switcher, nav, session/logout, and a
+// content area. Rendered once by the /dashboard/$slug layout (with an <Outlet/>
+// as children) so switching tabs never unmounts the sidebar — the project
+// switcher no longer flickers out on navigation.
+export function DashboardChrome({
   active,
   children,
-  actions,
   sessionUsername,
   projectName,
   projectSlug,
   projects,
-}: DashboardShellProps) {
+}: DashboardChromeProps) {
   const selectValue =
     projectSlug && projects.some((project) => project.slug === projectSlug)
       ? projectSlug
@@ -83,7 +105,7 @@ export function DashboardShell({
   return (
     <main className="min-h-screen bg-black text-neutral-100">
       <div className="grid min-h-screen lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="border-b border-white/10 px-5 py-6 lg:border-b-0 lg:border-r">
+        <aside className="flex flex-col border-b border-white/10 px-5 py-6 lg:border-b-0 lg:border-r">
           <Link to="/dashboard/projects" className="flex items-center gap-2">
             <img
               src="/openwish-icon-dark-192.png"
@@ -154,43 +176,24 @@ export function DashboardShell({
           <div className="mt-8 border-t border-white/10 pt-4">
             <p className="text-[11px] uppercase tracking-wider text-neutral-500">Session</p>
             <p className="mt-2 truncate text-sm text-white">{sessionUsername || "admin"}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full border-white/10 bg-transparent text-neutral-300 hover:bg-white/5 hover:text-white"
+              onClick={async () => {
+                try {
+                  await logoutDashboard();
+                } finally {
+                  assignLocation("/login");
+                }
+              }}
+            >
+              Logout
+            </Button>
           </div>
         </aside>
 
-        <section className="min-w-0 px-5 py-6 sm:px-8">
-          <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-lg font-medium tracking-tight text-white">
-              {active === "board"
-                ? "Board"
-                : active === "bugs"
-                  ? "Bugs"
-                  : active === "analytics"
-                    ? "Analytics"
-                    : active === "settings"
-                      ? "Settings"
-                      : "Projects"}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              {actions}
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-white/10 bg-transparent text-neutral-300 hover:bg-white/5 hover:text-white"
-                onClick={async () => {
-                  try {
-                    await logoutDashboard();
-                  } finally {
-                    assignLocation("/login");
-                  }
-                }}
-              >
-                Logout
-              </Button>
-            </div>
-          </header>
-
-          {children}
-        </section>
+        <section className="min-w-0 px-5 py-6 sm:px-8">{children}</section>
       </div>
     </main>
   );

@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { BugDetailDialog } from "#/components/bug-detail-dialog";
 import { Card, CardContent } from "#/components/ui/card";
-import { DashboardShell } from "#/components/dashboard-shell";
+import { DashboardPageHeader } from "#/components/dashboard-shell";
 import {
   ApiRequestError,
   bugScreenshotUrl,
@@ -35,7 +35,7 @@ const filterLabels: Record<FilterState, string> = {
 
 export function DashboardBugsPage() {
   const { slug } = Route.useParams();
-  const { error: sessionError, isLoading, projects, sessionUsername } = useDashboardSession();
+  const { error: sessionError, isLoading } = useDashboardSession();
   const [bugs, setBugs] = useState<BugResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterState>("all");
@@ -43,7 +43,6 @@ export function DashboardBugsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const selectedBug = bugs?.find((bug) => bug.id === selectedBugId) ?? null;
-  const projectName = projects.find((project) => project.slug === slug)?.name;
 
   const counts = useMemo(() => {
     const result: Record<FilterState, number> = {
@@ -107,14 +106,8 @@ export function DashboardBugsPage() {
   }, [slug]);
 
   return (
-    <DashboardShell
-      active="bugs"
-      projects={projects}
-      sessionUsername={sessionUsername}
-      projectName={projectName}
-      projectSlug={slug}
-      actions={undefined}
-    >
+    <>
+      <DashboardPageHeader title="Bugs" />
       <section className="space-y-4">
         {sessionError || error ? (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -241,7 +234,7 @@ export function DashboardBugsPage() {
           }
         }}
       />
-    </DashboardShell>
+    </>
   );
 }
 

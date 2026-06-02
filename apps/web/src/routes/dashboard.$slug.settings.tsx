@@ -4,7 +4,7 @@ import type { AdminProjectResponse } from "@openwish/shared";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DashboardShell } from "#/components/dashboard-shell";
+import { DashboardPageHeader } from "#/components/dashboard-shell";
 import {
   AppLinkSettings,
   NotificationSettings,
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/dashboard/$slug/settings")({
 
 function DashboardSettingsPage() {
   const { slug } = Route.useParams();
-  const { error: sessionError, isLoading, projects, sessionUsername } = useDashboardSession();
+  const { error: sessionError, isLoading } = useDashboardSession();
   const [data, setData] = useState<AdminProjectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -68,17 +68,11 @@ function DashboardSettingsPage() {
     };
   }, [slug]);
 
-  const projectName =
-    data?.project.name ?? projects.find((project) => project.slug === slug)?.name;
+  const projectName = data?.project.name ?? slug;
 
   return (
-    <DashboardShell
-      active="settings"
-      projects={projects}
-      sessionUsername={sessionUsername}
-      projectName={projectName}
-      projectSlug={slug}
-    >
+    <>
+      <DashboardPageHeader title="Settings" />
       <section className="space-y-5">
         {sessionError || error ? (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -184,6 +178,6 @@ function DashboardSettingsPage() {
           </>
         )}
       </section>
-    </DashboardShell>
+    </>
   );
 }

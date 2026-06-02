@@ -6,7 +6,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AnalyticsLineChart } from "#/components/analytics-line-chart";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
-import { DashboardShell } from "#/components/dashboard-shell";
+import { DashboardPageHeader } from "#/components/dashboard-shell";
 import { ApiRequestError, fetchAdminAnalytics } from "#/lib/api";
 import { formatPercent } from "#/lib/format";
 import { assignLocation } from "#/lib/navigation";
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/dashboard/$slug/analytics")({
 
 export function DashboardAnalyticsPage() {
   const { slug } = Route.useParams();
-  const { error: sessionError, isLoading, projects, sessionUsername } = useDashboardSession();
+  const { error: sessionError, isLoading } = useDashboardSession();
   const [data, setData] = useState<AdminAnalyticsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,28 +53,23 @@ export function DashboardAnalyticsPage() {
     };
   }, [slug]);
 
-  const projectName = data?.project.name ?? projects.find((project) => project.slug === slug)?.name;
-
   return (
-    <DashboardShell
-      active="analytics"
-      projects={projects}
-      sessionUsername={sessionUsername}
-      projectName={projectName}
-      projectSlug={slug}
-      actions={
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="border-white/10 bg-transparent text-neutral-300 hover:bg-white/5 hover:text-white"
-        >
-          <Link to="/dashboard/$slug" params={{ slug }}>
-            Back to board
-          </Link>
-        </Button>
-      }
-    >
+    <>
+      <DashboardPageHeader
+        title="Analytics"
+        actions={
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="border-white/10 bg-transparent text-neutral-300 hover:bg-white/5 hover:text-white"
+          >
+            <Link to="/dashboard/$slug" params={{ slug }}>
+              Back to board
+            </Link>
+          </Button>
+        }
+      />
       <section className="space-y-5">
         {sessionError || error ? (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -112,6 +107,6 @@ export function DashboardAnalyticsPage() {
           </>
         )}
       </section>
-    </DashboardShell>
+    </>
   );
 }

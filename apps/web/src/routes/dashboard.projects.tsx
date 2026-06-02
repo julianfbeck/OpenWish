@@ -16,7 +16,7 @@ import {
 } from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
-import { DashboardShell } from "#/components/dashboard-shell";
+import { DashboardChrome, DashboardPageHeader } from "#/components/dashboard-shell";
 import { Input } from "#/components/ui/input";
 import { PasskeyPanel } from "#/components/passkey-panel";
 import {
@@ -53,26 +53,29 @@ export function DashboardProjectsPage() {
   const activeProject = useMemo(() => projects[0], [projects]);
 
   return (
-    <DashboardShell
+    <DashboardChrome
       active="projects"
       projects={projects}
       sessionUsername={sessionUsername}
       projectName={activeProject?.name}
       projectSlug={activeProject?.slug}
-      actions={
-        <Button
-          size="sm"
-          className="bg-white text-black hover:bg-neutral-200"
-          onClick={() => {
-            const section = document.getElementById("create-project-card");
-            section?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }}
-        >
-          <Plus className="size-4" />
-          New project
-        </Button>
-      }
     >
+      <DashboardPageHeader
+        title="Projects"
+        actions={
+          <Button
+            size="sm"
+            className="bg-white text-black hover:bg-neutral-200"
+            onClick={() => {
+              const section = document.getElementById("create-project-card");
+              section?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          >
+            <Plus className="size-4" />
+            New project
+          </Button>
+        }
+      />
       <section className="space-y-6">
         {sessionError || error ? (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -272,6 +275,6 @@ export function DashboardProjectsPage() {
           </div>
         </div>
       </section>
-    </DashboardShell>
+    </DashboardChrome>
   );
 }
