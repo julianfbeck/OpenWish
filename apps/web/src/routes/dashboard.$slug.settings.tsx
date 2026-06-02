@@ -70,10 +70,6 @@ function DashboardSettingsPage() {
 
   const projectName =
     data?.project.name ?? projects.find((project) => project.slug === slug)?.name;
-  const projectIconUrl =
-    data?.project.appIconUrl ??
-    projects.find((project) => project.slug === slug)?.appIconUrl ??
-    null;
 
   return (
     <DashboardShell
@@ -82,7 +78,6 @@ function DashboardSettingsPage() {
       sessionUsername={sessionUsername}
       projectName={projectName}
       projectSlug={slug}
-      projectIconUrl={projectIconUrl}
     >
       <section className="space-y-5">
         {sessionError || error ? (

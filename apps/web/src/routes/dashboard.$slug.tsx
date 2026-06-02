@@ -237,7 +237,6 @@ export function DashboardBoardPage() {
       projects={projects}
       sessionUsername={sessionUsername}
       projectName={data?.project.name ?? projects.find((project) => project.slug === slug)?.name}
-      projectIconUrl={data?.project.appIconUrl ?? projects.find((project) => project.slug === slug)?.appIconUrl ?? null}
       projectSlug={slug}
       actions={
         <div className="flex flex-wrap items-center gap-2">

@@ -17,14 +17,22 @@ type DashboardSessionState = {
   reloadProjects: () => Promise<ProjectSummary[]>;
 };
 
+// Module-level cache so the session/projects survive client-side navigation
+// between dashboard tabs. Each tab is its own route, so without this the hook
+// remounts with empty state and the project switcher flickers out until the
+// refetch lands. A full reload (logout / 401 redirect) clears module state.
+let projectsCache: ProjectSummary[] | null = null;
+let usernameCache = "";
+
 export function useDashboardSession(): DashboardSessionState {
-  const [sessionUsername, setSessionUsername] = useState("");
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [sessionUsername, setSessionUsername] = useState(usernameCache);
+  const [projects, setProjects] = useState<ProjectSummary[]>(projectsCache ?? []);
+  const [isLoading, setIsLoading] = useState(projectsCache === null);
   const [error, setError] = useState<string | null>(null);
 
   async function reloadProjects() {
     const response = await fetchAdminProjects();
+    projectsCache = response.projects;
     setProjects(response.projects);
     return response.projects;
   }
@@ -33,7 +41,11 @@ export function useDashboardSession(): DashboardSessionState {
     let cancelled = false;
 
     async function load() {
-      setIsLoading(true);
+      // Only show the blocking loading state on the very first load; later
+      // navigations already have cached data and refresh in the background.
+      if (projectsCache === null) {
+        setIsLoading(true);
+      }
       setError(null);
 
       try {
@@ -42,6 +54,7 @@ export function useDashboardSession(): DashboardSessionState {
           return;
         }
 
+        usernameCache = session.username;
         setSessionUsername(session.username);
         await reloadProjects();
       } catch (nextError) {

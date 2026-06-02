@@ -23,7 +23,6 @@ type DashboardShellProps = {
   sessionUsername: string;
   projectName?: string;
   projectSlug?: string;
-  projectIconUrl?: string | null;
   projects: ProjectSummary[];
 };
 
@@ -74,18 +73,12 @@ export function DashboardShell({
   sessionUsername,
   projectName,
   projectSlug,
-  projectIconUrl,
   projects,
 }: DashboardShellProps) {
   const selectValue =
     projectSlug && projects.some((project) => project.slug === projectSlug)
       ? projectSlug
       : undefined;
-  const activeIconUrl =
-    projectIconUrl ??
-    (selectValue
-      ? (projects.find((project) => project.slug === selectValue)?.appIconUrl ?? null)
-      : null);
 
   return (
     <main className="min-h-screen bg-black text-neutral-100">
@@ -113,16 +106,7 @@ export function DashboardShell({
                   size="sm"
                   className="h-9 w-full border-white/10 bg-neutral-950 text-sm text-neutral-100"
                 >
-                  <span className="flex min-w-0 items-center gap-2">
-                    {activeIconUrl ? (
-                      <img
-                        src={activeIconUrl}
-                        alt=""
-                        className="size-5 shrink-0 rounded-sm border border-white/10"
-                      />
-                    ) : null}
-                    <SelectValue placeholder={projectName ?? "Select project"} />
-                  </span>
+                  <SelectValue placeholder={projectName ?? "Select project"} />
                 </SelectTrigger>
                 <SelectContent className="border-white/10 bg-neutral-950 text-neutral-100">
                   {projects.map((project) => (
