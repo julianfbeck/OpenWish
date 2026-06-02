@@ -35,6 +35,7 @@ import { Route as AdminBugScreenshotRoute } from "../../src/routes/api/admin/pro
 import { Route as HealthRoute } from "../../src/routes/health";
 import { Route as PublicProjectRoute } from "../../src/routes/api/public/projects/$slug";
 import { Route as PublicFeedbackRoute } from "../../src/routes/api/public/feedback/$slug";
+import { Route as PublicUnsubscribeRoute } from "../../src/routes/api/public/unsubscribe";
 
 type ServerHandler = (input: {
   context: ServerRequestContext;
@@ -189,6 +190,7 @@ const routes: RouteDefinition[] = [
     ["slug"],
     routeHandlers(PublicFeedbackRoute),
   ),
+  route("GET", /^\/api\/public\/unsubscribe$/, [], routeHandlers(PublicUnsubscribeRoute)),
 ];
 
 export async function requestApp(path: string, init: RequestInit | undefined, env: Bindings) {

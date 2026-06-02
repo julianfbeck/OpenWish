@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN email_unsubscribed INTEGER NOT NULL DEFAULT 0;

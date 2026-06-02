@@ -1,6 +1,7 @@
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 
+import { sendEmailViaCloudflare } from "./email";
 import type { Bindings, ProjectRow } from "./types";
 
 type NotificationKind = "wish" | "bug" | "test";
@@ -130,6 +131,105 @@ export async function sendBugNotification(
       `${dashboardBase(env)}/dashboard/${project.slug}/bugs`,
     ].join("\n"),
   );
+}
+
+// ── Reporter notifications (emails to the end user who submitted feedback) ──
+//
+// These go through the Cloudflare Email Service HTTP API (see ./email), because
+// they must reach arbitrary recipient addresses — something the Email Routing
+// `send_email` binding above cannot do. Every reporter email carries an
+// unsubscribe link plus a List-Unsubscribe header.
+
+export type ReporterFeedbackKind = "wish" | "bug";
+
+export function buildUnsubscribeUrl(env: Bindings, token: string): string {
+  return `${dashboardBase(env)}/api/public/unsubscribe?token=${encodeURIComponent(token)}`;
+}
+
+export function buildFeedbackUrl(env: Bindings, slug: string): string {
+  return `${dashboardBase(env)}/feedback/${slug}`;
+}
+
+function nounFor(kind: ReporterFeedbackKind) {
+  return kind === "bug" ? "bug report" : "feature request";
+}
+
+function unsubscribeFooter(url: string): string[] {
+  return [
+    "",
+    "—",
+    "You're receiving this because you submitted feedback to this app.",
+    `Unsubscribe: ${url}`,
+  ];
+}
+
+function unsubscribeHeaders(url: string): Record<string, string> {
+  return {
+    "List-Unsubscribe": `<${url}>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  };
+}
+
+export async function sendReporterCommentEmail(
+  env: Bindings,
+  project: ProjectRow,
+  input: {
+    kind: ReporterFeedbackKind;
+    title: string;
+    to: string;
+    comment: string;
+    unsubscribeUrl: string;
+    link?: string | null;
+  },
+): Promise<boolean> {
+  const lines = [
+    `${project.name} replied to your ${nounFor(input.kind)}:`,
+    "",
+    `"${input.title}"`,
+    "",
+    truncate(input.comment, 1_000),
+  ];
+  if (input.link) {
+    lines.push("", `View it: ${input.link}`);
+  }
+  lines.push(...unsubscribeFooter(input.unsubscribeUrl));
+
+  return sendEmailViaCloudflare(env, {
+    to: input.to,
+    subject: `[${project.name}] New reply on "${input.title}"`,
+    text: lines.join("\n"),
+    headers: unsubscribeHeaders(input.unsubscribeUrl),
+  });
+}
+
+export async function sendReporterResolvedEmail(
+  env: Bindings,
+  project: ProjectRow,
+  input: {
+    kind: ReporterFeedbackKind;
+    title: string;
+    to: string;
+    unsubscribeUrl: string;
+    link?: string | null;
+  },
+): Promise<boolean> {
+  const resolution = input.kind === "bug" ? "fixed" : "implemented";
+  const lines = [
+    `Good news — your ${nounFor(input.kind)} has been marked ${resolution}:`,
+    "",
+    `"${input.title}"`,
+  ];
+  if (input.link) {
+    lines.push("", `View it: ${input.link}`);
+  }
+  lines.push(...unsubscribeFooter(input.unsubscribeUrl));
+
+  return sendEmailViaCloudflare(env, {
+    to: input.to,
+    subject: `[${project.name}] "${input.title}" was ${resolution}`,
+    text: lines.join("\n"),
+    headers: unsubscribeHeaders(input.unsubscribeUrl),
+  });
 }
 
 export type { NotificationKind };

@@ -10,6 +10,12 @@ export type Bindings = {
   OPENWISH_DASHBOARD_SESSION_SECRET?: string;
   OPENWISH_NOTIFICATION_FROM?: string;
   OPENWISH_DASHBOARD_URL?: string;
+  // Cloudflare Email Service (transactional API) — used for emails to end users
+  // (e.g. "your bug was fixed"). Unlike the NOTIFICATION_EMAIL Email Routing
+  // binding, this can deliver to arbitrary recipients. Both must be set for
+  // reporter notifications to send; when absent, those sends are skipped.
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_EMAIL_API_TOKEN?: string;
   OPENWISH_PASSKEY_RP_ID?: string;
   OPENWISH_PASSKEY_RP_NAME?: string;
   OPENWISH_TURNSTILE_SITE_KEY?: string;

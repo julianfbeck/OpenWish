@@ -2,8 +2,15 @@ import { adminWishUpdateSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireAdminProject } from "#/server/auth";
-import { deleteWish, loadAdminProject, updateWish } from "#/server/db";
+import {
+  deleteWish,
+  getReporterContact,
+  getWishMeta,
+  loadAdminProject,
+  updateWish,
+} from "#/server/db";
 import { parseJson, publicError } from "#/server/http";
+import { notifyReporter } from "#/server/reporter-notify";
 import { requireRequestContext } from "#/server/route-context";
 
 export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId")({
@@ -28,12 +35,39 @@ export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId")
           return bodyResult.response;
         }
 
+        const before = await getWishMeta(
+          requestContext.env.DB,
+          projectResult.project.id,
+          params.wishId,
+        );
+
         await updateWish(
           requestContext.env.DB,
           projectResult.project.id,
           params.wishId,
           bodyResult.data,
         );
+
+        // Email the reporter only on a real transition into "implemented".
+        if (
+          before &&
+          bodyResult.data.state === "implemented" &&
+          before.state !== "implemented"
+        ) {
+          const contact = await getReporterContact(
+            requestContext.env.DB,
+            projectResult.project.id,
+            before.userUuid,
+          );
+          await notifyReporter(requestContext, projectResult.project, {
+            event: "resolved",
+            kind: "wish",
+            userUuid: before.userUuid,
+            title: before.title,
+            to: contact.email,
+            unsubscribed: contact.unsubscribed,
+          });
+        }
 
         const response = await loadAdminProject(requestContext.env.DB, projectResult.project);
         return Response.json(response);

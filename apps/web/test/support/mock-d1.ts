@@ -17,6 +17,7 @@ type MockUserRow = {
   email: string | null;
   name: string | null;
   payment_per_month: number | null;
+  email_unsubscribed?: number;
   created_at: string;
   updated_at: string;
 };
@@ -166,6 +167,56 @@ export class MockD1Database {
           entry.user_uuid === userUuid,
       );
       return (vote ? { 1: 1 } : null) as Row | null;
+    }
+
+    if (
+      normalized.includes(
+        "SELECT email, email_unsubscribed FROM users WHERE project_id = ? AND uuid = ? LIMIT 1",
+      )
+    ) {
+      const projectId = String(bindings[0] ?? "");
+      const uuid = String(bindings[1] ?? "");
+      const user = this.state.users.find(
+        (entry) => entry.project_id === projectId && entry.uuid === uuid,
+      );
+      return (user
+        ? { email: user.email, email_unsubscribed: user.email_unsubscribed }
+        : null) as Row | null;
+    }
+
+    if (
+      normalized.includes(
+        "SELECT user_uuid, state, title FROM wishes WHERE project_id = ? AND id = ? LIMIT 1",
+      )
+    ) {
+      const projectId = String(bindings[0] ?? "");
+      const wishId = String(bindings[1] ?? "");
+      const wish = this.state.wishes.find(
+        (entry) => entry.project_id === projectId && entry.id === wishId,
+      );
+      return (wish
+        ? { user_uuid: wish.user_uuid, state: wish.state, title: wish.title }
+        : null) as Row | null;
+    }
+
+    if (
+      normalized.includes(
+        "SELECT user_uuid, state, title, reporter_email FROM bugs WHERE project_id = ? AND id = ? LIMIT 1",
+      )
+    ) {
+      const projectId = String(bindings[0] ?? "");
+      const bugId = String(bindings[1] ?? "");
+      const bug = this.state.bugs.find(
+        (entry) => entry.project_id === projectId && entry.id === bugId,
+      );
+      return (bug
+        ? {
+            user_uuid: bug.user_uuid,
+            state: bug.state,
+            title: bug.title,
+            reporter_email: bug.reporter_email,
+          }
+        : null) as Row | null;
     }
 
     if (normalized.includes("SELECT COUNT(*) AS count FROM users WHERE project_id = ?")) {
@@ -592,9 +643,26 @@ export class MockD1Database {
         email: (email as string | null) ?? null,
         name: (name as string | null) ?? null,
         payment_per_month: (paymentPerMonth as number | null) ?? null,
+        email_unsubscribed: 0,
         created_at: String(createdAt),
         updated_at: String(updatedAt),
       });
+      return { success: true };
+    }
+
+    if (
+      normalized.includes(
+        "UPDATE users SET email_unsubscribed = 1, updated_at = ? WHERE project_id = ? AND uuid = ?",
+      )
+    ) {
+      const [updatedAt, projectId, uuid] = bindings;
+      const user = this.state.users.find(
+        (entry) => entry.project_id === projectId && entry.uuid === uuid,
+      );
+      if (user) {
+        user.email_unsubscribed = 1;
+        user.updated_at = String(updatedAt);
+      }
       return { success: true };
     }
 

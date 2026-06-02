@@ -24,7 +24,8 @@ That's it — no Docker, no Postgres, no separate Node/Bun host. The whole stack
 | Wishes / bugs / users / comments / projects / passkeys | D1 SQLite database | `DB` |
 | Bug screenshots | R2 bucket | `BUGS_BUCKET` |
 | Rate-limit counters (fixed-window) | Workers KV | `RATE_LIMIT_KV` |
-| New-wish / new-bug / test notifications | Email Routing send binding | `NOTIFICATION_EMAIL` |
+| New-wish / new-bug / test notifications (to **you**, the admin) | Email Routing send binding | `NOTIFICATION_EMAIL` |
+| Reporter notifications (to **the user** — admin reply / "fixed" / "implemented") | Cloudflare Email Service (HTTP API) | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_EMAIL_API_TOKEN` |
 | Dashboard session secret, admin password, passkey RP config | Worker secrets / vars | see below |
 
 ---
@@ -127,6 +128,7 @@ pnpm run deploy
 | `OPENWISH_PASSKEY_RP_ID` | required for passkeys | Must equal the host (no scheme, no port). E.g. `wishkit.example.com`. |
 | `OPENWISH_PASSKEY_RP_NAME` | optional | Shown in the OS passkey prompt. |
 | `OPENWISH_TURNSTILE_SITE_KEY` | required for the public form | Public site key from `dash.cloudflare.com → Turnstile → Add site`. Embedded in the `/feedback/<slug>` page. |
+| `CLOUDFLARE_ACCOUNT_ID` | required for reporter emails | Your Cloudflare account id. Paired with the `CLOUDFLARE_EMAIL_API_TOKEN` secret to send reporter notifications via Cloudflare Email Service. |
 
 ### Secrets
 
@@ -137,6 +139,32 @@ pnpm run deploy
 | `OPENWISH_DASHBOARD_SESSION_SECRET` | yes | HMAC key for the 7-day signed session cookie. Generate with `openssl rand -base64 48`. |
 | `OPENWISH_BOOTSTRAP_TOKEN` | optional | If set, allows `POST /api/admin/projects/bootstrap` to create projects without a dashboard session. Useful for the very first project before you log in. **Delete after first use** for the strongest posture. |
 | `OPENWISH_TURNSTILE_SECRET_KEY` | required for the public form | Server-side secret paired with the site key above. Used on `siteverify` calls. Set with `wrangler secret put OPENWISH_TURNSTILE_SECRET_KEY`. |
+| `CLOUDFLARE_EMAIL_API_TOKEN` | required for reporter emails | API token with the `email_sending:write` scope (create at `dash.cloudflare.com/profile/api-tokens`). Set with `wrangler secret put CLOUDFLARE_EMAIL_API_TOKEN`. |
+
+---
+
+## Reporter notifications (emails to your users)
+
+When an admin **replies to** or marks a bug **fixed** / a feature request **implemented** in the dashboard, OpenWish emails the person who reported it. These are separate from the admin notifications above:
+
+- **Admin notifications** (new wish/bug landed) go to your own verified inbox over Email Routing (`NOTIFICATION_EMAIL`).
+- **Reporter notifications** go to arbitrary end-user addresses, which Email Routing cannot do — so they use **[Cloudflare Email Service](https://developers.cloudflare.com/email-routing/email-workers/)** (the transactional HTTP API, public beta).
+
+Prerequisites:
+
+1. A **Workers Paid** plan ($5/mo) — Email Service requires it.
+2. Your sender domain **onboarded** under `dash.cloudflare.com → Email → Email Sending → Onboard Domain` (adds SPF/DKIM/DMARC + the `cf-bounce` MX records).
+3. An API token with **`email_sending:write`** → set as the `CLOUDFLARE_EMAIL_API_TOKEN` secret.
+4. Your account id → set as the `CLOUDFLARE_ACCOUNT_ID` var.
+
+Behavior & guarantees:
+
+- A send is fired only when the reporter has an email on file (bugs use the report's `reporter_email`, falling back to the user's saved email; wishes use the user's saved email) **and** hasn't unsubscribed.
+- Status emails fire only on a *real transition* into the done state (`fixed` / `implemented`) — re-saving an already-done item sends nothing.
+- Every reporter email carries an unsubscribe link (`/api/public/unsubscribe?token=…`, an HMAC-signed token) plus a `List-Unsubscribe` header. Unsubscribing is per-reporter, per-project.
+- Sending is **best-effort**: if the credentials are missing or the API rejects the send, the admin action still succeeds and the failure is only logged. Until it's configured, reporter emails are silently skipped — so local dev needs no setup.
+
+> Email Service is a young product. If you want to be conservative, watch deliverability on these lower-stakes notifications before relying on Cloudflare for anything higher-stakes.
 
 ---
 
@@ -194,6 +222,7 @@ Auth: signed `openwish_dashboard_session` cookie issued by `/api/auth/login` or 
 - `POST /api/auth/passkey/login/options` and `POST /api/auth/passkey/login/verify` — the passkey login ceremony
 - `GET /api/public/projects/$slug` — minimal project info (`{ name, slug, enabled, turnstileSiteKey }`) used by the public feedback page. Returns 404 when the project doesn't exist OR when its public form is disabled.
 - `POST /api/public/feedback/$slug` — accepts `{ kind: "bug" | "wish", title, description, email?, turnstileToken }`. Validates the Turnstile token via `siteverify`, applies an IP-based rate limit (5/min/IP, 60/min/project), then routes to the existing wish/bug create flow. Disabled projects return 404 here too.
+- `GET /api/public/unsubscribe?token=…` — one-click unsubscribe target embedded in every reporter notification email. Verifies the HMAC-signed token and, if valid, marks that reporter as unsubscribed for the project (returns a small confirmation page; invalid/tampered tokens return 400).
 
 ### Public feedback page
 

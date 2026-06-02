@@ -51,6 +51,7 @@ const schemaStatements = [
     email TEXT,
     name TEXT,
     payment_per_month INTEGER,
+    email_unsubscribed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     UNIQUE (project_id, uuid),
@@ -320,6 +321,40 @@ export async function ensureUserExists(
   return upsertUser(db, projectId, uuid, {});
 }
 
+// Email + unsubscribe state for a single reporter, keyed by (project, uuid).
+// Used to decide whether a reporter notification should be sent.
+export async function getReporterContact(
+  db: D1Database,
+  projectId: string,
+  uuid: string,
+): Promise<{ email: string | null; unsubscribed: boolean }> {
+  const row = await db
+    .prepare(
+      `SELECT email, email_unsubscribed FROM users WHERE project_id = ? AND uuid = ? LIMIT 1`,
+    )
+    .bind(projectId, uuid)
+    .first<{ email: string | null; email_unsubscribed: number }>();
+
+  return {
+    email: row?.email ?? null,
+    unsubscribed: (row?.email_unsubscribed ?? 0) === 1,
+  };
+}
+
+export async function setUserUnsubscribed(
+  db: D1Database,
+  projectId: string,
+  uuid: string,
+) {
+  await ensureUserExists(db, projectId, uuid);
+  await db
+    .prepare(
+      `UPDATE users SET email_unsubscribed = 1, updated_at = ? WHERE project_id = ? AND uuid = ?`,
+    )
+    .bind(nowIso(), projectId, uuid)
+    .run();
+}
+
 export async function loadWishesForProject(
   db: D1Database,
   project: ProjectRow,
@@ -522,6 +557,23 @@ export async function updateWish(
       wishId,
     )
     .run();
+}
+
+// Owner + current state of a wish, fetched before an update so the caller can
+// detect a real state transition (and know whom to notify).
+export async function getWishMeta(
+  db: D1Database,
+  projectId: string,
+  wishId: string,
+): Promise<{ userUuid: string; state: string; title: string } | null> {
+  const row = await db
+    .prepare(
+      `SELECT user_uuid, state, title FROM wishes WHERE project_id = ? AND id = ? LIMIT 1`,
+    )
+    .bind(projectId, wishId)
+    .first<{ user_uuid: string; state: string; title: string }>();
+
+  return row ? { userUuid: row.user_uuid, state: row.state, title: row.title } : null;
 }
 
 export async function deleteWish(
@@ -971,6 +1023,30 @@ async function bugExists(db: D1Database, projectId: string, bugId: string) {
     .bind(projectId, bugId)
     .first<{ id: string }>();
   return Boolean(row);
+}
+
+// Owner, current state, and reporter email of a bug, fetched before an update so
+// the caller can detect a real state transition and know whom to notify.
+export async function getBugMeta(
+  db: D1Database,
+  projectId: string,
+  bugId: string,
+): Promise<{ userUuid: string; state: string; title: string; reporterEmail: string | null } | null> {
+  const row = await db
+    .prepare(
+      `SELECT user_uuid, state, title, reporter_email FROM bugs WHERE project_id = ? AND id = ? LIMIT 1`,
+    )
+    .bind(projectId, bugId)
+    .first<{ user_uuid: string; state: string; title: string; reporter_email: string | null }>();
+
+  return row
+    ? {
+        userUuid: row.user_uuid,
+        state: row.state,
+        title: row.title,
+        reporterEmail: row.reporter_email ?? null,
+      }
+    : null;
 }
 
 export async function updateBug(

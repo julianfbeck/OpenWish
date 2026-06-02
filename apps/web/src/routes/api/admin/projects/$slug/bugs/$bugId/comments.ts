@@ -2,8 +2,14 @@ import { createBugCommentRequestSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireAdminProject } from "#/server/auth";
-import { createBugComment, loadAdminBugs } from "#/server/db";
+import {
+  createBugComment,
+  getBugMeta,
+  getReporterContact,
+  loadAdminBugs,
+} from "#/server/db";
 import { parseJson, publicError } from "#/server/http";
+import { notifyReporter } from "#/server/reporter-notify";
 import { requireRequestContext } from "#/server/route-context";
 
 export const Route = createFileRoute("/api/admin/projects/$slug/bugs/$bugId/comments")({
@@ -36,6 +42,29 @@ export const Route = createFileRoute("/api/admin/projects/$slug/bugs/$bugId/comm
 
         if (!updated) {
           return publicError(404, "Bug not found.");
+        }
+
+        // Notify the bug's reporter that an admin replied.
+        const meta = await getBugMeta(
+          requestContext.env.DB,
+          projectResult.project.id,
+          params.bugId,
+        );
+        if (meta) {
+          const contact = await getReporterContact(
+            requestContext.env.DB,
+            projectResult.project.id,
+            meta.userUuid,
+          );
+          await notifyReporter(requestContext, projectResult.project, {
+            event: "comment",
+            kind: "bug",
+            userUuid: meta.userUuid,
+            title: meta.title,
+            to: meta.reporterEmail ?? contact.email,
+            unsubscribed: contact.unsubscribed,
+            comment: bodyResult.data.description,
+          });
         }
 
         const list = await loadAdminBugs(requestContext.env.DB, projectResult.project);

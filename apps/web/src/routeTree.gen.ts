@@ -24,6 +24,7 @@ import { Route as ApiWishVoteRouteImport } from './routes/api/wish/vote'
 import { Route as ApiWishListRouteImport } from './routes/api/wish/list'
 import { Route as ApiWishCreateRouteImport } from './routes/api/wish/create'
 import { Route as ApiUserUpdateRouteImport } from './routes/api/user/update'
+import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 import { Route as ApiCommentCreateRouteImport } from './routes/api/comment/create'
 import { Route as ApiBugScreenshotRouteImport } from './routes/api/bug/screenshot'
 import { Route as ApiBugListRouteImport } from './routes/api/bug/list'
@@ -127,6 +128,11 @@ const ApiWishCreateRoute = ApiWishCreateRouteImport.update({
 const ApiUserUpdateRoute = ApiUserUpdateRouteImport.update({
   id: '/api/user/update',
   path: '/api/user/update',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
+  id: '/api/public/unsubscribe',
+  path: '/api/public/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCommentCreateRoute = ApiCommentCreateRouteImport.update({
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/api/bug/list': typeof ApiBugListRoute
   '/api/bug/screenshot': typeof ApiBugScreenshotRoute
   '/api/comment/create': typeof ApiCommentCreateRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
@@ -354,6 +361,7 @@ export interface FileRoutesByTo {
   '/api/bug/list': typeof ApiBugListRoute
   '/api/bug/screenshot': typeof ApiBugScreenshotRoute
   '/api/comment/create': typeof ApiCommentCreateRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
@@ -401,6 +409,7 @@ export interface FileRoutesById {
   '/api/bug/list': typeof ApiBugListRoute
   '/api/bug/screenshot': typeof ApiBugScreenshotRoute
   '/api/comment/create': typeof ApiCommentCreateRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
@@ -449,6 +458,7 @@ export interface FileRouteTypes {
     | '/api/bug/list'
     | '/api/bug/screenshot'
     | '/api/comment/create'
+    | '/api/public/unsubscribe'
     | '/api/user/update'
     | '/api/wish/create'
     | '/api/wish/list'
@@ -495,6 +505,7 @@ export interface FileRouteTypes {
     | '/api/bug/list'
     | '/api/bug/screenshot'
     | '/api/comment/create'
+    | '/api/public/unsubscribe'
     | '/api/user/update'
     | '/api/wish/create'
     | '/api/wish/list'
@@ -541,6 +552,7 @@ export interface FileRouteTypes {
     | '/api/bug/list'
     | '/api/bug/screenshot'
     | '/api/comment/create'
+    | '/api/public/unsubscribe'
     | '/api/user/update'
     | '/api/wish/create'
     | '/api/wish/list'
@@ -586,6 +598,7 @@ export interface RootRouteChildren {
   ApiBugListRoute: typeof ApiBugListRoute
   ApiBugScreenshotRoute: typeof ApiBugScreenshotRoute
   ApiCommentCreateRoute: typeof ApiCommentCreateRoute
+  ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
   ApiUserUpdateRoute: typeof ApiUserUpdateRoute
   ApiWishCreateRoute: typeof ApiWishCreateRoute
   ApiWishListRoute: typeof ApiWishListRoute
@@ -706,6 +719,13 @@ declare module '@tanstack/react-router' {
       path: '/api/user/update'
       fullPath: '/api/user/update'
       preLoaderRoute: typeof ApiUserUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/unsubscribe': {
+      id: '/api/public/unsubscribe'
+      path: '/api/public/unsubscribe'
+      fullPath: '/api/public/unsubscribe'
+      preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/comment/create': {
@@ -1043,6 +1063,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBugListRoute: ApiBugListRoute,
   ApiBugScreenshotRoute: ApiBugScreenshotRoute,
   ApiCommentCreateRoute: ApiCommentCreateRoute,
+  ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
   ApiUserUpdateRoute: ApiUserUpdateRoute,
   ApiWishCreateRoute: ApiWishCreateRoute,
   ApiWishListRoute: ApiWishListRoute,
