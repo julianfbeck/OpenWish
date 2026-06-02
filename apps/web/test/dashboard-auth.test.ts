@@ -139,6 +139,61 @@ describe("dashboard auth", () => {
     expect(response.status).toBe(401);
   });
 
+  it("issues a 30-day persistent session cookie by default", async () => {
+    const response = await requestApp(
+      "/api/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret-pass" }),
+      },
+      env,
+    );
+
+    const cookie = readSetCookie(response) ?? "";
+    expect(cookie).toContain("Max-Age=2592000"); // 30 days in seconds
+    expect(cookie).toContain("HttpOnly");
+  });
+
+  it("honours OPENWISH_DASHBOARD_SESSION_DAYS", async () => {
+    const response = await requestApp(
+      "/api/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret-pass" }),
+      },
+      { ...env, OPENWISH_DASHBOARD_SESSION_DAYS: "7" },
+    );
+
+    expect(readSetCookie(response) ?? "").toContain("Max-Age=604800"); // 7 days
+  });
+
+  it("slides the session by re-issuing the cookie on each session check", async () => {
+    const login = await requestApp(
+      "/api/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret-pass" }),
+      },
+      env,
+    );
+    const cookie = readSetCookie(login) ?? "";
+    expect(cookie).toBeTruthy();
+
+    const session = await requestApp(
+      "/api/auth/session",
+      { headers: { Cookie: cookie } },
+      env,
+    );
+
+    expect(session.status).toBe(200);
+    const refreshed = readSetCookie(session) ?? "";
+    expect(refreshed).toContain(`${dashboardSessionCookieName}=`);
+    expect(refreshed).toContain("Max-Age=2592000");
+  });
+
   it("protects project listing behind the dashboard session", async () => {
     const unauthenticated = await requestApp("/api/admin/projects", undefined, env);
     expect(unauthenticated.status).toBe(401);

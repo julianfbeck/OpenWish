@@ -8,6 +8,7 @@ export type Bindings = {
   OPENWISH_DASHBOARD_USERNAME?: string;
   OPENWISH_DASHBOARD_PASSWORD?: string;
   OPENWISH_DASHBOARD_SESSION_SECRET?: string;
+  OPENWISH_DASHBOARD_SESSION_DAYS?: string;
   OPENWISH_NOTIFICATION_FROM?: string;
   OPENWISH_DASHBOARD_URL?: string;
   // Cloudflare Email Service (transactional API) — used for emails to end users

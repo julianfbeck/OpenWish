@@ -125,6 +125,7 @@ pnpm run deploy
 | `OPENWISH_CORS_ORIGIN` | recommended | Restrict the dashboard SPA's allowed origin. `*` is fine in dev. |
 | `OPENWISH_NOTIFICATION_FROM` | required to send emails | Must be on a domain with Email Routing **active**. The recipient still has to be a verified destination address. |
 | `OPENWISH_DASHBOARD_URL` | recommended | Public URL the dashboard is served from — used to build the deep-link in notification emails AND as the WebAuthn `expectedOrigin`. |
+| `OPENWISH_DASHBOARD_SESSION_DAYS` | optional | Dashboard session lifetime in days (default `30`). The session slides — every dashboard load re-issues the cookie — so you stay signed in as long as you visit within the window. |
 | `OPENWISH_PASSKEY_RP_ID` | required for passkeys | Must equal the host (no scheme, no port). E.g. `wishkit.example.com`. |
 | `OPENWISH_PASSKEY_RP_NAME` | optional | Shown in the OS passkey prompt. |
 | `OPENWISH_TURNSTILE_SITE_KEY` | required for the public form | Public site key from `dash.cloudflare.com → Turnstile → Add site`. Embedded in the `/feedback/<slug>` page. |

@@ -41,7 +41,11 @@ export const Route = createFileRoute("/api/auth/login")({
           }),
           {
             headers: {
-              "Set-Cookie": serializeDashboardSessionCookie(request, result.token),
+              "Set-Cookie": serializeDashboardSessionCookie(
+                request,
+                result.token,
+                requestContext.env,
+              ),
             },
           },
         );

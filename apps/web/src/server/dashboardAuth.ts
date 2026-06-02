@@ -2,9 +2,19 @@ import type { Bindings } from "./types";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-const sessionLifetimeMs = 1000 * 60 * 60 * 24 * 7;
-const sessionLifetimeSeconds = sessionLifetimeMs / 1000;
+const DEFAULT_SESSION_DAYS = 30;
 const tokenPrefix = "ows";
+
+// Session lifetime in milliseconds. Defaults to 30 days; override with the
+// OPENWISH_DASHBOARD_SESSION_DAYS var. Sessions slide: /api/auth/session
+// re-issues a fresh cookie on each authenticated dashboard load, so an admin
+// who visits within the window effectively stays signed in.
+function sessionLifetimeMs(env: Bindings) {
+  const configured = Number(env.OPENWISH_DASHBOARD_SESSION_DAYS);
+  const days =
+    Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_SESSION_DAYS;
+  return days * 24 * 60 * 60 * 1000;
+}
 export const dashboardSessionCookieName = "openwish_dashboard_session";
 
 type SessionPayload = {
@@ -79,7 +89,7 @@ export async function createDashboardSessionToken(env: Bindings, username: strin
 
   const payload: SessionPayload = {
     sub: username,
-    exp: Date.now() + sessionLifetimeMs,
+    exp: Date.now() + sessionLifetimeMs(env),
   };
   const payloadEncoded = bytesToBase64Url(encoder.encode(JSON.stringify(payload)));
   const signature = await sign(config.sessionSecret, payloadEncoded);
@@ -194,13 +204,17 @@ export function getDashboardSessionCookie(request: Request) {
   return parseCookieHeader(request.headers.get("cookie")).get(dashboardSessionCookieName) ?? null;
 }
 
-export function serializeDashboardSessionCookie(request: Request, token: string) {
+export function serializeDashboardSessionCookie(
+  request: Request,
+  token: string,
+  env: Bindings,
+) {
   const attributes = [
     `${dashboardSessionCookieName}=${encodeCookieValue(token)}`,
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
-    `Max-Age=${sessionLifetimeSeconds}`,
+    `Max-Age=${Math.floor(sessionLifetimeMs(env) / 1000)}`,
   ];
 
   if (shouldUseSecureCookies(request)) {

@@ -50,7 +50,11 @@ export const Route = createFileRoute("/api/auth/passkey/login/verify")({
           }),
           {
             headers: {
-              "Set-Cookie": serializeDashboardSessionCookie(request, token),
+              "Set-Cookie": serializeDashboardSessionCookie(
+                request,
+                token,
+                requestContext.env,
+              ),
             },
           },
         );
