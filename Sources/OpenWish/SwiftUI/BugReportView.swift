@@ -9,6 +9,9 @@ import SwiftUI
 #if canImport(PhotosUI)
 import PhotosUI
 #endif
+#if os(iOS)
+import UIKit
+#endif
 
 #if os(iOS)
 
@@ -48,6 +51,9 @@ struct BugComposeView: View {
     private let descriptionLimit = 2_000
     private let emailLimit = 254
     private let attachmentLimit = 4
+    private let maxScreenshotUploadBytes = 4_750_000
+    private let screenshotMaxPixelDimensions: [CGFloat] = [2_048, 1_800, 1_536, 1_280, 1_024]
+    private let screenshotCompressionQualities: [CGFloat] = [0.82, 0.72, 0.62, 0.52, 0.42]
 
     var body: some View {
         ScrollView {
@@ -273,9 +279,10 @@ struct BugComposeView: View {
 
             if #available(iOS 16.0, *) {
                 BugScreenshotPicker(
-                    isDisabled: attachments.count >= attachmentLimit,
-                    remaining: attachmentLimit - attachments.count,
-                    onPick: handlePickedItem(data:image:)
+                    isDisabled: remainingAttachmentSlots == 0,
+                    remaining: remainingAttachmentSlots,
+                    onPick: handlePickedItem(data:image:),
+                    onLoadFailure: handleScreenshotLoadFailure
                 )
             } else {
                 Text("Screenshot uploads require iOS 16 or newer.")
@@ -332,14 +339,33 @@ struct BugComposeView: View {
             && !isSubmitting
     }
 
+    private var remainingAttachmentSlots: Int {
+        max(attachmentLimit - attachments.count - pendingUploads, 0)
+    }
+
+    private func handleScreenshotLoadFailure() {
+        errorMessage = "Could not load screenshot from Photos. Please try another image."
+    }
+
     private func handlePickedItem(data: Data, image: UIImage) {
-        guard attachments.count < attachmentLimit else {
+        guard remainingAttachmentSlots > 0 else {
             return
         }
+
+        guard let preparedScreenshot = prepareScreenshotForUpload(from: image) else {
+            errorMessage = data.count > maxScreenshotUploadBytes
+                ? "Screenshot is too large. Please choose a smaller image."
+                : "Could not prepare screenshot for upload."
+            return
+        }
+
+        errorMessage = nil
         pendingUploads += 1
         Task {
-            let contentType = pickContentType(for: data)
-            let result = await BugApi.uploadScreenshot(data: data, contentType: contentType)
+            let result = await BugApi.uploadScreenshot(
+                data: preparedScreenshot.data,
+                contentType: preparedScreenshot.contentType
+            )
             await MainActor.run {
                 pendingUploads = max(0, pendingUploads - 1)
                 switch result {
@@ -347,35 +373,60 @@ struct BugComposeView: View {
                     attachments.append(
                         BugAttachment(
                             id: UUID(),
-                            preview: image,
+                            preview: preparedScreenshot.preview,
                             storageKey: response.key
                         )
                     )
                 case .failure:
-                    errorMessage = "Could not upload screenshot."
+                    errorMessage = "Could not upload screenshot. Please try again."
                 }
             }
         }
     }
 
-    private func pickContentType(for data: Data) -> String {
-        // Quick magic-number sniffing so we send what the server expects.
-        guard data.count >= 4 else {
-            return "image/jpeg"
+    private func prepareScreenshotForUpload(from image: UIImage) -> PreparedBugScreenshot? {
+        for maxPixelDimension in screenshotMaxPixelDimensions {
+            let resizedImage = resizedScreenshot(image, maxPixelDimension: maxPixelDimension)
+            for quality in screenshotCompressionQualities {
+                guard let data = resizedImage.jpegData(compressionQuality: quality) else {
+                    continue
+                }
+                if data.count <= maxScreenshotUploadBytes {
+                    return PreparedBugScreenshot(
+                        data: data,
+                        preview: resizedImage,
+                        contentType: "image/jpeg"
+                    )
+                }
+            }
         }
-        if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
-            return "image/png"
+
+        return nil
+    }
+
+    private func resizedScreenshot(_ image: UIImage, maxPixelDimension: CGFloat) -> UIImage {
+        let pixelWidth = CGFloat(image.cgImage?.width ?? Int(image.size.width * image.scale))
+        let pixelHeight = CGFloat(image.cgImage?.height ?? Int(image.size.height * image.scale))
+        let largestPixelDimension = max(pixelWidth, pixelHeight)
+
+        guard largestPixelDimension > maxPixelDimension else {
+            return image
         }
-        if data.count >= 12,
-           data[0] == 0x52, data[1] == 0x49, data[2] == 0x46, data[3] == 0x46,
-           data[8] == 0x57, data[9] == 0x45, data[10] == 0x42, data[11] == 0x50 {
-            return "image/webp"
+
+        let scale = maxPixelDimension / largestPixelDimension
+        let targetSize = CGSize(
+            width: max(1, floor(pixelWidth * scale)),
+            height: max(1, floor(pixelHeight * scale))
+        )
+        let rendererFormat = UIGraphicsImageRendererFormat.default()
+        rendererFormat.scale = 1
+        rendererFormat.opaque = true
+
+        return UIGraphicsImageRenderer(size: targetSize, format: rendererFormat).image { _ in
+            UIColor.white.setFill()
+            UIRectFill(CGRect(origin: .zero, size: targetSize))
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
-        if data.count >= 12,
-           data[4] == 0x66, data[5] == 0x74, data[6] == 0x79, data[7] == 0x70 {
-            return "image/heic"
-        }
-        return "image/jpeg"
     }
 
     private func submit() async {
@@ -464,12 +515,20 @@ struct BugAttachment: Identifiable, Equatable {
     }
 }
 
+@available(iOS 15.0, *)
+private struct PreparedBugScreenshot {
+    let data: Data
+    let preview: UIImage
+    let contentType: String
+}
+
 @available(iOS 16.0, *)
 private struct BugScreenshotPicker: View {
 
     let isDisabled: Bool
     let remaining: Int
     let onPick: (Data, UIImage) -> Void
+    let onLoadFailure: () -> Void
 
     @State
     private var selection: [PhotosPickerItem] = []
@@ -498,10 +557,20 @@ private struct BugScreenshotPicker: View {
             guard !items.isEmpty else { return }
             for item in items {
                 Task {
-                    if let data = try? await item.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
+                    do {
+                        guard let data = try await item.loadTransferable(type: Data.self),
+                              let image = UIImage(data: data) else {
+                            await MainActor.run {
+                                onLoadFailure()
+                            }
+                            return
+                        }
                         await MainActor.run {
                             onPick(data, image)
+                        }
+                    } catch {
+                        await MainActor.run {
+                            onLoadFailure()
                         }
                     }
                 }
