@@ -24,6 +24,7 @@ import { Route as DashboardSlugAnalyticsRouteImport } from './routes/dashboard.$
 import { Route as ApiWishVoteRouteImport } from './routes/api/wish/vote'
 import { Route as ApiWishListRouteImport } from './routes/api/wish/list'
 import { Route as ApiWishCreateRouteImport } from './routes/api/wish/create'
+import { Route as ApiV1ProjectsRouteImport } from './routes/api/v1/projects'
 import { Route as ApiUserUpdateRouteImport } from './routes/api/user/update'
 import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 import { Route as ApiCommentCreateRouteImport } from './routes/api/comment/create'
@@ -41,6 +42,8 @@ import { Route as ApiAuthPasskeySummaryRouteImport } from './routes/api/auth/pas
 import { Route as ApiAuthPasskeyCredentialIdRouteImport } from './routes/api/auth/passkey/$credentialId'
 import { Route as ApiAdminProjectsBootstrapRouteImport } from './routes/api/admin/projects/bootstrap'
 import { Route as ApiAdminProjectsSlugRouteImport } from './routes/api/admin/projects/$slug'
+import { Route as ApiV1ProjectsSlugWishesRouteImport } from './routes/api/v1/projects/$slug/wishes'
+import { Route as ApiV1ProjectsSlugBugsRouteImport } from './routes/api/v1/projects/$slug/bugs'
 import { Route as ApiAuthPasskeyRegisterVerifyRouteImport } from './routes/api/auth/passkey/register/verify'
 import { Route as ApiAuthPasskeyRegisterOptionsRouteImport } from './routes/api/auth/passkey/register/options'
 import { Route as ApiAuthPasskeyLoginVerifyRouteImport } from './routes/api/auth/passkey/login/verify'
@@ -131,6 +134,11 @@ const ApiWishCreateRoute = ApiWishCreateRouteImport.update({
   path: '/api/wish/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1ProjectsRoute = ApiV1ProjectsRouteImport.update({
+  id: '/api/v1/projects',
+  path: '/api/v1/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUserUpdateRoute = ApiUserUpdateRouteImport.update({
   id: '/api/user/update',
   path: '/api/user/update',
@@ -217,6 +225,16 @@ const ApiAdminProjectsSlugRoute = ApiAdminProjectsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ApiAdminProjectsRoute,
+} as any)
+const ApiV1ProjectsSlugWishesRoute = ApiV1ProjectsSlugWishesRouteImport.update({
+  id: '/$slug/wishes',
+  path: '/$slug/wishes',
+  getParentRoute: () => ApiV1ProjectsRoute,
+} as any)
+const ApiV1ProjectsSlugBugsRoute = ApiV1ProjectsSlugBugsRouteImport.update({
+  id: '/$slug/bugs',
+  path: '/$slug/bugs',
+  getParentRoute: () => ApiV1ProjectsRoute,
 } as any)
 const ApiAuthPasskeyRegisterVerifyRoute =
   ApiAuthPasskeyRegisterVerifyRouteImport.update({
@@ -322,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/api/comment/create': typeof ApiCommentCreateRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
+  '/api/v1/projects': typeof ApiV1ProjectsRouteWithChildren
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
@@ -344,6 +363,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/passkey/login/verify': typeof ApiAuthPasskeyLoginVerifyRoute
   '/api/auth/passkey/register/options': typeof ApiAuthPasskeyRegisterOptionsRoute
   '/api/auth/passkey/register/verify': typeof ApiAuthPasskeyRegisterVerifyRoute
+  '/api/v1/projects/$slug/bugs': typeof ApiV1ProjectsSlugBugsRoute
+  '/api/v1/projects/$slug/wishes': typeof ApiV1ProjectsSlugWishesRoute
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
@@ -369,6 +390,7 @@ export interface FileRoutesByTo {
   '/api/comment/create': typeof ApiCommentCreateRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
+  '/api/v1/projects': typeof ApiV1ProjectsRouteWithChildren
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
@@ -391,6 +413,8 @@ export interface FileRoutesByTo {
   '/api/auth/passkey/login/verify': typeof ApiAuthPasskeyLoginVerifyRoute
   '/api/auth/passkey/register/options': typeof ApiAuthPasskeyRegisterOptionsRoute
   '/api/auth/passkey/register/verify': typeof ApiAuthPasskeyRegisterVerifyRoute
+  '/api/v1/projects/$slug/bugs': typeof ApiV1ProjectsSlugBugsRoute
+  '/api/v1/projects/$slug/wishes': typeof ApiV1ProjectsSlugWishesRoute
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
@@ -418,6 +442,7 @@ export interface FileRoutesById {
   '/api/comment/create': typeof ApiCommentCreateRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
+  '/api/v1/projects': typeof ApiV1ProjectsRouteWithChildren
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
@@ -440,6 +465,8 @@ export interface FileRoutesById {
   '/api/auth/passkey/login/verify': typeof ApiAuthPasskeyLoginVerifyRoute
   '/api/auth/passkey/register/options': typeof ApiAuthPasskeyRegisterOptionsRoute
   '/api/auth/passkey/register/verify': typeof ApiAuthPasskeyRegisterVerifyRoute
+  '/api/v1/projects/$slug/bugs': typeof ApiV1ProjectsSlugBugsRoute
+  '/api/v1/projects/$slug/wishes': typeof ApiV1ProjectsSlugWishesRoute
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
@@ -468,6 +495,7 @@ export interface FileRouteTypes {
     | '/api/comment/create'
     | '/api/public/unsubscribe'
     | '/api/user/update'
+    | '/api/v1/projects'
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
@@ -490,6 +518,8 @@ export interface FileRouteTypes {
     | '/api/auth/passkey/login/verify'
     | '/api/auth/passkey/register/options'
     | '/api/auth/passkey/register/verify'
+    | '/api/v1/projects/$slug/bugs'
+    | '/api/v1/projects/$slug/wishes'
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -515,6 +545,7 @@ export interface FileRouteTypes {
     | '/api/comment/create'
     | '/api/public/unsubscribe'
     | '/api/user/update'
+    | '/api/v1/projects'
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
@@ -537,6 +568,8 @@ export interface FileRouteTypes {
     | '/api/auth/passkey/login/verify'
     | '/api/auth/passkey/register/options'
     | '/api/auth/passkey/register/verify'
+    | '/api/v1/projects/$slug/bugs'
+    | '/api/v1/projects/$slug/wishes'
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -563,6 +596,7 @@ export interface FileRouteTypes {
     | '/api/comment/create'
     | '/api/public/unsubscribe'
     | '/api/user/update'
+    | '/api/v1/projects'
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
@@ -585,6 +619,8 @@ export interface FileRouteTypes {
     | '/api/auth/passkey/login/verify'
     | '/api/auth/passkey/register/options'
     | '/api/auth/passkey/register/verify'
+    | '/api/v1/projects/$slug/bugs'
+    | '/api/v1/projects/$slug/wishes'
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -610,6 +646,7 @@ export interface RootRouteChildren {
   ApiCommentCreateRoute: typeof ApiCommentCreateRoute
   ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
   ApiUserUpdateRoute: typeof ApiUserUpdateRoute
+  ApiV1ProjectsRoute: typeof ApiV1ProjectsRouteWithChildren
   ApiWishCreateRoute: typeof ApiWishCreateRoute
   ApiWishListRoute: typeof ApiWishListRoute
   ApiWishVoteRoute: typeof ApiWishVoteRoute
@@ -731,6 +768,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWishCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/projects': {
+      id: '/api/v1/projects'
+      path: '/api/v1/projects'
+      fullPath: '/api/v1/projects'
+      preLoaderRoute: typeof ApiV1ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/user/update': {
       id: '/api/user/update'
       path: '/api/user/update'
@@ -849,6 +893,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/projects/$slug'
       preLoaderRoute: typeof ApiAdminProjectsSlugRouteImport
       parentRoute: typeof ApiAdminProjectsRoute
+    }
+    '/api/v1/projects/$slug/wishes': {
+      id: '/api/v1/projects/$slug/wishes'
+      path: '/$slug/wishes'
+      fullPath: '/api/v1/projects/$slug/wishes'
+      preLoaderRoute: typeof ApiV1ProjectsSlugWishesRouteImport
+      parentRoute: typeof ApiV1ProjectsRoute
+    }
+    '/api/v1/projects/$slug/bugs': {
+      id: '/api/v1/projects/$slug/bugs'
+      path: '/$slug/bugs'
+      fullPath: '/api/v1/projects/$slug/bugs'
+      preLoaderRoute: typeof ApiV1ProjectsSlugBugsRouteImport
+      parentRoute: typeof ApiV1ProjectsRoute
     }
     '/api/auth/passkey/register/verify': {
       id: '/api/auth/passkey/register/verify'
@@ -1067,6 +1125,20 @@ const ApiAdminProjectsRouteChildren: ApiAdminProjectsRouteChildren = {
 const ApiAdminProjectsRouteWithChildren =
   ApiAdminProjectsRoute._addFileChildren(ApiAdminProjectsRouteChildren)
 
+interface ApiV1ProjectsRouteChildren {
+  ApiV1ProjectsSlugBugsRoute: typeof ApiV1ProjectsSlugBugsRoute
+  ApiV1ProjectsSlugWishesRoute: typeof ApiV1ProjectsSlugWishesRoute
+}
+
+const ApiV1ProjectsRouteChildren: ApiV1ProjectsRouteChildren = {
+  ApiV1ProjectsSlugBugsRoute: ApiV1ProjectsSlugBugsRoute,
+  ApiV1ProjectsSlugWishesRoute: ApiV1ProjectsSlugWishesRoute,
+}
+
+const ApiV1ProjectsRouteWithChildren = ApiV1ProjectsRoute._addFileChildren(
+  ApiV1ProjectsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
@@ -1084,6 +1156,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCommentCreateRoute: ApiCommentCreateRoute,
   ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
   ApiUserUpdateRoute: ApiUserUpdateRoute,
+  ApiV1ProjectsRoute: ApiV1ProjectsRouteWithChildren,
   ApiWishCreateRoute: ApiWishCreateRoute,
   ApiWishListRoute: ApiWishListRoute,
   ApiWishVoteRoute: ApiWishVoteRoute,

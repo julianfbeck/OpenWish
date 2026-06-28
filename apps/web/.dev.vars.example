@@ -14,3 +14,7 @@ OPENWISH_TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 # CLOUDFLARE_ACCOUNT_ID may also live in wrangler.jsonc `vars`.
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_EMAIL_API_TOKEN=
+# Global API key — a single secret that authorizes the cross-project /api/v1
+# surface used by the Go CLI. Generate with: openssl rand -base64 32
+# In production set it as a secret: wrangler secret put OPENWISH_GLOBAL_API_KEY
+OPENWISH_GLOBAL_API_KEY=

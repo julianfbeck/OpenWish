@@ -17,6 +17,10 @@ export type Bindings = {
   // reporter notifications to send; when absent, those sends are skipped.
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_EMAIL_API_TOKEN?: string;
+  // Global API key (a single secret) that authorizes the cross-project
+  // programmatic API under /api/v1/** — used by the Go CLI. Unlike per-project
+  // api_keys, this one key can read and write every project.
+  OPENWISH_GLOBAL_API_KEY?: string;
   OPENWISH_PASSKEY_RP_ID?: string;
   OPENWISH_PASSKEY_RP_NAME?: string;
   OPENWISH_TURNSTILE_SITE_KEY?: string;

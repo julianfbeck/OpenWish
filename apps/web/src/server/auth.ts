@@ -46,6 +46,43 @@ export async function requireProjectFromApiKey({ env, request }: RequestLike) {
   return { ok: true as const, project };
 }
 
+// Constant-time string comparison so a wrong global key can't be probed by
+// timing. Returns false immediately on length mismatch (length isn't secret).
+function timingSafeEqual(a: string, b: string) {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+// Authorizes the cross-project /api/v1 surface with the single global API key.
+// Accepts either `Authorization: Bearer <key>` or `x-openwish-api-key: <key>`.
+export function requireGlobalApiKey({ env, request }: RequestLike) {
+  const expected = env.OPENWISH_GLOBAL_API_KEY?.trim();
+  if (!expected) {
+    return {
+      ok: false as const,
+      response: publicError(503, "Global API is not configured."),
+    };
+  }
+
+  const provided =
+    extractBearerToken(request) ?? request.headers.get("x-openwish-api-key")?.trim() ?? null;
+
+  if (!provided || !timingSafeEqual(provided, expected)) {
+    return {
+      ok: false as const,
+      response: publicError(401, "Invalid or missing global API key."),
+    };
+  }
+
+  return { ok: true as const };
+}
+
 export async function requireProjectBySlug({ env }: Omit<RequestLike, "request">, slug: string) {
   const project = await projectByField(env.DB, "slug", slug);
   if (!project) {

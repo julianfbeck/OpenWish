@@ -36,6 +36,9 @@ import { Route as HealthRoute } from "../../src/routes/health";
 import { Route as PublicProjectRoute } from "../../src/routes/api/public/projects/$slug";
 import { Route as PublicFeedbackRoute } from "../../src/routes/api/public/feedback/$slug";
 import { Route as PublicUnsubscribeRoute } from "../../src/routes/api/public/unsubscribe";
+import { Route as V1ProjectsRoute } from "../../src/routes/api/v1/projects";
+import { Route as V1ProjectWishesRoute } from "../../src/routes/api/v1/projects/$slug/wishes";
+import { Route as V1ProjectBugsRoute } from "../../src/routes/api/v1/projects/$slug/bugs";
 
 type ServerHandler = (input: {
   context: ServerRequestContext;
@@ -191,6 +194,12 @@ const routes: RouteDefinition[] = [
     routeHandlers(PublicFeedbackRoute),
   ),
   route("GET", /^\/api\/public\/unsubscribe$/, [], routeHandlers(PublicUnsubscribeRoute)),
+  route("GET", /^\/api\/v1\/projects$/, [], routeHandlers(V1ProjectsRoute)),
+  route("POST", /^\/api\/v1\/projects$/, [], routeHandlers(V1ProjectsRoute)),
+  route("GET", /^\/api\/v1\/projects\/([^/]+)\/wishes$/, ["slug"], routeHandlers(V1ProjectWishesRoute)),
+  route("POST", /^\/api\/v1\/projects\/([^/]+)\/wishes$/, ["slug"], routeHandlers(V1ProjectWishesRoute)),
+  route("GET", /^\/api\/v1\/projects\/([^/]+)\/bugs$/, ["slug"], routeHandlers(V1ProjectBugsRoute)),
+  route("POST", /^\/api\/v1\/projects\/([^/]+)\/bugs$/, ["slug"], routeHandlers(V1ProjectBugsRoute)),
 ];
 
 export async function requestApp(path: string, init: RequestInit | undefined, env: Bindings) {

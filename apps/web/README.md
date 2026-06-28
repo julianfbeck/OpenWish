@@ -141,6 +141,7 @@ pnpm run deploy
 | `OPENWISH_BOOTSTRAP_TOKEN` | optional | If set, allows `POST /api/admin/projects/bootstrap` to create projects without a dashboard session. Useful for the very first project before you log in. **Delete after first use** for the strongest posture. |
 | `OPENWISH_TURNSTILE_SECRET_KEY` | required for the public form | Server-side secret paired with the site key above. Used on `siteverify` calls. Set with `wrangler secret put OPENWISH_TURNSTILE_SECRET_KEY`. |
 | `CLOUDFLARE_EMAIL_API_TOKEN` | required for reporter emails | API token with the `email_sending:write` scope (create at `dash.cloudflare.com/profile/api-tokens`). Set with `wrangler secret put CLOUDFLARE_EMAIL_API_TOKEN`. |
+| `OPENWISH_GLOBAL_API_KEY` | required for the v1/CLI API | A single secret authorizing the cross-project `/api/v1/**` API (used by the Go CLI). Generate with `openssl rand -base64 32`; set with `wrangler secret put OPENWISH_GLOBAL_API_KEY`. |
 
 ---
 
@@ -224,6 +225,23 @@ Auth: signed `openwish_dashboard_session` cookie issued by `/api/auth/login` or 
 - `GET /api/public/projects/$slug` — minimal project info (`{ name, slug, enabled, turnstileSiteKey }`) used by the public feedback page. Returns 404 when the project doesn't exist OR when its public form is disabled.
 - `POST /api/public/feedback/$slug` — accepts `{ kind: "bug" | "wish", title, description, email?, turnstileToken }`. Validates the Turnstile token via `siteverify`, applies an IP-based rate limit (5/min/IP, 60/min/project), then routes to the existing wish/bug create flow. Disabled projects return 404 here too.
 - `GET /api/public/unsubscribe?token=…` — one-click unsubscribe target embedded in every reporter notification email. Verifies the HMAC-signed token and, if valid, marks that reporter as unsubscribed for the project (returns a small confirmation page; invalid/tampered tokens return 400).
+
+### Global API (`/api/v1`) — for the CLI and automation
+
+A cross-project programmatic surface authorized by a single global key
+(`OPENWISH_GLOBAL_API_KEY`), passed as `Authorization: Bearer <key>` (or the
+`x-openwish-api-key` header). Unlike per-project SDK keys, this one key reads and
+writes **every** project — keep it server-side only. The [`openwish` Go CLI](../cli)
+is the primary consumer.
+
+- `GET /api/v1/projects` — list every project (`slug`, `name`, `appIconUrl`, `createdAt`; never api keys).
+- `POST /api/v1/projects` — create a project `{ name, slug, watermarkEnabled? }`; returns the new `apiKey`/`adminToken`.
+- `GET /api/v1/projects/$slug/wishes` — list feature requests for a project.
+- `POST /api/v1/projects/$slug/wishes` — create one `{ title, description, email?, state? }`.
+- `GET /api/v1/projects/$slug/bugs` — list bug reports for a project.
+- `POST /api/v1/projects/$slug/bugs` — create one `{ title, description, email?, screenshotKeys? }`.
+
+Missing/invalid key → 401; key not configured on the server → 503; unknown project → 404.
 
 ### Public feedback page
 
