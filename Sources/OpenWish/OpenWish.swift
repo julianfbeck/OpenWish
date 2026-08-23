@@ -24,6 +24,12 @@ public struct OpenWish {
 
     static var _apiUrlOverride: String?
 
+    static var _apiVersion: OpenWishAPIVersion = .automatic
+
+    static var _issueContextProvider: OpenWishIssueContextProvider?
+
+    static var _cardSearchProvider: OpenWishCardSearchProvider?
+
     static var user = User()
 
     static var _theme = Theme()
@@ -71,9 +77,48 @@ public struct OpenWish {
         #endif
     }
 
-    public static func configure(with apiKey: String, apiUrl: String? = nil) {
+    public static func configure(
+        with apiKey: String,
+        apiUrl: String? = nil,
+        apiVersion: OpenWishAPIVersion = .automatic,
+        issueContextProvider: OpenWishIssueContextProvider? = nil,
+        cardSearchProvider: OpenWishCardSearchProvider? = nil
+    ) {
         OpenWish.apiKey = apiKey
         OpenWish.apiUrlOverride = apiUrl
+        threadLock.withLock {
+            OpenWish._apiVersion = apiVersion
+            OpenWish._issueContextProvider = issueContextProvider
+            OpenWish._cardSearchProvider = cardSearchProvider
+        }
+    }
+
+    static var apiVersion: OpenWishAPIVersion {
+        threadLock.withLock { _apiVersion }
+    }
+
+    static var cardSearchProvider: OpenWishCardSearchProvider? {
+        threadLock.withLock { _cardSearchProvider }
+    }
+
+    static func issueContext() -> [String: OpenWishValue] {
+        var context: [String: OpenWishValue] = [
+            "sdk": .object(["name": .string("OpenWish"), "version": .string(ProjectSettings.sdkVersion)]),
+            "app": .object([
+                "bundleId": .string(Bundle.main.bundleIdentifier ?? "unknown"),
+                "version": .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"),
+                "build": .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown")
+            ]),
+            "device": .object([
+                "os": .string(ProcessInfo.processInfo.operatingSystemVersionString),
+                "locale": .string(Locale.current.identifier)
+            ])
+        ]
+        let provider = threadLock.withLock { _issueContextProvider }
+        for (key, value) in provider?() ?? [:] {
+            context[key] = value
+        }
+        return context
     }
 
     /// FeedbackView that renders the list of feedback.

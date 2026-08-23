@@ -1,4 +1,4 @@
-import { adminCommentRequestSchema } from "@openwish/shared";
+import { adminCommentRequestSchema, type ReporterNotificationStatus } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireAdminProject } from "#/server/auth";
@@ -53,13 +53,14 @@ export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId/c
           projectResult.project.id,
           params.wishId,
         );
+        let reporterNotification: ReporterNotificationStatus = "not_requested";
         if (meta) {
           const contact = await getReporterContact(
             requestContext.env.DB,
             projectResult.project.id,
             meta.userUuid,
           );
-          await notifyReporter(requestContext, projectResult.project, {
+          reporterNotification = await notifyReporter(requestContext, projectResult.project, {
             event: "comment",
             kind: "wish",
             userUuid: meta.userUuid,
@@ -71,7 +72,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId/c
         }
 
         const response = await loadAdminProject(requestContext.env.DB, projectResult.project);
-        return Response.json(response, { status: 201 });
+        return Response.json({ ...response, reporterNotification }, { status: 201 });
       },
     },
   },

@@ -36,7 +36,7 @@ struct WishlistContainer: View {
     private var colorScheme
 
     @State
-    private var selectedWishState: LocalWishState = .all
+    private var selectedWishState: LocalWishState = .library(.pending)
 
     @State
     private var isRefreshing = false
@@ -78,7 +78,6 @@ struct WishlistContainer: View {
 
     private var feedbackStateSelection: [LocalWishState] {
         return [
-            .all,
             .library(.pending),
             .library(.inReview),
             .library(.planned),

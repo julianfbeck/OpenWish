@@ -6,6 +6,7 @@ import {
   type CommentResponse,
   type CreateBugRequest,
   type CreateBugResponse,
+  type CreateV2IssueRequest,
   type CreateWishRequest,
   type CreateWishResponse,
   type ListWishResponse,
@@ -14,6 +15,9 @@ import {
   type VoteWishResponse,
   type WishResponse,
   type ProjectSummary,
+  type IssueCard,
+  type IssueContext,
+  type IssueNote,
 } from "@openwish/shared";
 
 import type {
@@ -104,6 +108,9 @@ const schemaStatements = [
     state TEXT NOT NULL DEFAULT 'open',
     screenshot_keys TEXT NOT NULL DEFAULT '[]',
     reporter_email TEXT,
+    issue_kind TEXT NOT NULL DEFAULT 'bug',
+    context_json TEXT NOT NULL DEFAULT '{}',
+    card_json TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -118,6 +125,15 @@ const schemaStatements = [
     created_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (bug_id) REFERENCES bugs(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS issue_notes (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    issue_id TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (issue_id) REFERENCES bugs(id) ON DELETE CASCADE
   )`,
   `CREATE TABLE IF NOT EXISTS auth_passkeys (
     credential_id TEXT PRIMARY KEY,
@@ -146,6 +162,7 @@ const schemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_analytics_project_kind ON analytics_events(project_id, kind, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_bugs_project ON bugs(project_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_bug_comments_project_bug ON bug_comments(project_id, bug_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_issue_notes_project_issue ON issue_notes(project_id, issue_id, created_at DESC)`,
 ] as const;
 
 const schemaInitPromises = new WeakMap<D1Database, Promise<void>>();
@@ -358,6 +375,7 @@ export async function setUserUnsubscribed(
 export async function loadWishesForProject(
   db: D1Database,
   project: ProjectRow,
+  viewerUuid?: string,
 ): Promise<ListWishResponse> {
   const [wishesResult, votesResult, commentsResult] = await Promise.all([
     db
@@ -388,7 +406,9 @@ export async function loadWishesForProject(
       .all<CommentRow>(),
   ]);
 
-  const wishes = wishesResult.results ?? [];
+  const wishes = (wishesResult.results ?? []).filter(
+    (wish) => wish.state !== "pending" || viewerUuid === undefined || wish.user_uuid === viewerUuid,
+  );
   const votes = votesResult.results ?? [];
   const comments = commentsResult.results ?? [];
 
@@ -856,6 +876,30 @@ function parseScreenshotKeys(value: string | null | undefined): string[] {
   return [];
 }
 
+function parseJsonObject(value: string | null | undefined): IssueContext {
+  if (!value) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as IssueContext)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function parseCard(value: string | null | undefined): IssueCard | null {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as IssueCard)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function toBugCommentResponse(row: BugCommentRow): CommentResponse {
   return {
     id: row.id,
@@ -875,6 +919,9 @@ function toBugResponse(row: BugRow, comments: BugCommentRow[]): BugResponse {
     state: row.state as BugState,
     screenshotKeys: parseScreenshotKeys(row.screenshot_keys),
     reporterEmail: row.reporter_email ?? null,
+    kind: row.issue_kind === "cardData" ? "cardData" : "bug",
+    context: parseJsonObject(row.context_json),
+    card: parseCard(row.card_json),
     commentList: comments
       .filter((comment) => comment.bug_id === row.id)
       .map(toBugCommentResponse),
@@ -921,6 +968,90 @@ export async function createBug(
   return { id, state, createdAt: timestamp };
 }
 
+export async function createV2Issue(
+  db: D1Database,
+  project: ProjectRow,
+  userUuid: string,
+  input: CreateV2IssueRequest,
+): Promise<CreateBugResponse> {
+  await ensureUserExists(db, project.id, userUuid);
+  if (input.email) {
+    await upsertUser(db, project.id, userUuid, { email: input.email });
+  }
+
+  const id = crypto.randomUUID();
+  const timestamp = nowIso();
+  const state: BugState = "open";
+  await db.prepare(
+    `INSERT INTO bugs (id, project_id, user_uuid, title, description, state, screenshot_keys, reporter_email, issue_kind, context_json, card_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    id,
+    project.id,
+    userUuid,
+    input.title,
+    input.description,
+    state,
+    JSON.stringify(input.screenshotKeys ?? []),
+    input.email ?? null,
+    input.kind,
+    JSON.stringify(input.context ?? {}),
+    input.card ? JSON.stringify(input.card) : null,
+    timestamp,
+    timestamp,
+  ).run();
+  return { id, state, createdAt: timestamp };
+}
+
+export async function loadUserIssuesV2(
+  db: D1Database,
+  project: ProjectRow,
+  userUuid: string,
+): Promise<BugResponse[]> {
+  const [bugsResult, commentsResult] = await Promise.all([
+    db.prepare(
+      `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, issue_kind, context_json, card_json, created_at, updated_at
+       FROM bugs WHERE project_id = ? AND user_uuid = ? ORDER BY datetime(created_at) DESC`,
+    ).bind(project.id, userUuid).all<BugRow>(),
+    db.prepare(
+      `SELECT id, bug_id, user_uuid, description, is_admin, created_at
+       FROM bug_comments WHERE project_id = ? AND bug_id IN (SELECT id FROM bugs WHERE project_id = ? AND user_uuid = ?)
+       ORDER BY datetime(created_at) ASC`,
+    ).bind(project.id, project.id, userUuid).all<BugCommentRow>(),
+  ]);
+  return (bugsResult.results ?? []).map((bug) =>
+    toBugResponse(bug, commentsResult.results ?? []),
+  );
+}
+
+export async function loadIssueNotes(
+  db: D1Database,
+  projectId: string,
+  issueId: string,
+): Promise<IssueNote[]> {
+  const result = await db.prepare(
+    `SELECT id, body, created_at FROM issue_notes
+     WHERE project_id = ? AND issue_id = ? ORDER BY datetime(created_at) DESC`,
+  ).bind(projectId, issueId).all<{ id: string; body: string; created_at: string }>();
+  return (result.results ?? []).map((note) => ({
+    id: note.id, body: note.body, createdAt: note.created_at,
+  }));
+}
+
+export async function createIssueNote(
+  db: D1Database,
+  projectId: string,
+  issueId: string,
+  body: string,
+): Promise<IssueNote | null> {
+  if (!(await bugExists(db, projectId, issueId))) return null;
+  const note = { id: crypto.randomUUID(), body, createdAt: nowIso() };
+  await db.prepare(
+    `INSERT INTO issue_notes (id, project_id, issue_id, body, created_at) VALUES (?, ?, ?, ?, ?)`,
+  ).bind(note.id, projectId, issueId, note.body, note.createdAt).run();
+  return note;
+}
+
 export async function loadUserBugs(
   db: D1Database,
   project: ProjectRow,
@@ -958,17 +1089,23 @@ export async function loadAdminBugs(
   db: D1Database,
   project: ProjectRow,
 ): Promise<BugResponse[]> {
-  const [bugsResult, commentsResult] = await Promise.all([
-    db
-      .prepare(
-        `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at
+  let bugsResult: D1Result<BugRow>;
+  try {
+    bugsResult = await db.prepare(
+        `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, issue_kind, context_json, card_json, created_at, updated_at
          FROM bugs
          WHERE project_id = ?
          ORDER BY datetime(created_at) DESC`,
-      )
-      .bind(project.id)
-      .all<BugRow>(),
-    db
+      ).bind(project.id).all<BugRow>();
+  } catch {
+    // A rolling deploy can briefly run new code before migration 0009. Keep
+    // every V1/admin read available and simply omit V2-only fields.
+    bugsResult = await db.prepare(
+      `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at
+       FROM bugs WHERE project_id = ? ORDER BY datetime(created_at) DESC`,
+    ).bind(project.id).all<BugRow>();
+  }
+  const commentsResult = await db
       .prepare(
         `SELECT id, bug_id, user_uuid, description, is_admin, created_at
          FROM bug_comments
@@ -976,8 +1113,7 @@ export async function loadAdminBugs(
          ORDER BY datetime(created_at) ASC`,
       )
       .bind(project.id)
-      .all<BugCommentRow>(),
-  ]);
+      .all<BugCommentRow>();
 
   const bugs = bugsResult.results ?? [];
   const comments = commentsResult.results ?? [];
@@ -990,15 +1126,20 @@ export async function loadBug(
   project: ProjectRow,
   bugId: string,
 ): Promise<BugResponse | null> {
-  const row = await db
-    .prepare(
-      `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at
+  let row: BugRow | null;
+  try {
+    row = await db.prepare(
+      `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, issue_kind, context_json, card_json, created_at, updated_at
        FROM bugs
        WHERE project_id = ? AND id = ?
        LIMIT 1`,
-    )
-    .bind(project.id, bugId)
-    .first<BugRow>();
+    ).bind(project.id, bugId).first<BugRow>();
+  } catch {
+    row = await db.prepare(
+      `SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at
+       FROM bugs WHERE project_id = ? AND id = ? LIMIT 1`,
+    ).bind(project.id, bugId).first<BugRow>();
+  }
 
   if (!row) {
     return null;

@@ -51,6 +51,7 @@ type MockState = {
   comments: MockCommentRow[];
   bugs: MockBugRow[];
   bugComments: MockBugCommentRow[];
+  issueNotes: Array<{ id: string; project_id: string; issue_id: string; body: string; created_at: string }>;
   passkeys: PasskeyRow[];
   authChallenges: AuthChallengeRow[];
   analyticsEvents: Array<{
@@ -111,6 +112,7 @@ export class MockD1Database {
       comments: initialState?.comments ?? [],
       bugs: initialState?.bugs ?? [],
       bugComments: initialState?.bugComments ?? [],
+      issueNotes: initialState?.issueNotes ?? [],
       passkeys: initialState?.passkeys ?? [],
       authChallenges: initialState?.authChallenges ?? [],
       analyticsEvents: initialState?.analyticsEvents ?? [],
@@ -295,9 +297,8 @@ export class MockD1Database {
     }
 
     if (
-      normalized.includes(
-        "SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at FROM bugs WHERE project_id = ? AND id = ? LIMIT 1",
-      )
+      normalized.includes("FROM bugs WHERE project_id = ? AND id = ? LIMIT 1") &&
+      normalized.includes("SELECT id, user_uuid, title, description")
     ) {
       const projectId = String(bindings[0] ?? "");
       const bugId = String(bindings[1] ?? "");
@@ -439,9 +440,7 @@ export class MockD1Database {
     }
 
     if (
-      normalized.includes(
-        "SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at FROM bugs WHERE project_id = ? AND user_uuid = ? ORDER BY datetime(created_at) DESC",
-      )
+      normalized.includes("FROM bugs WHERE project_id = ? AND user_uuid = ? ORDER BY datetime(created_at) DESC")
     ) {
       const projectId = String(bindings[0] ?? "");
       const userUuid = String(bindings[1] ?? "");
@@ -453,9 +452,7 @@ export class MockD1Database {
     }
 
     if (
-      normalized.includes(
-        "SELECT id, user_uuid, title, description, state, screenshot_keys, reporter_email, created_at, updated_at FROM bugs WHERE project_id = ? ORDER BY datetime(created_at) DESC",
-      )
+      normalized.includes("FROM bugs WHERE project_id = ? ORDER BY datetime(created_at) DESC")
     ) {
       const projectId = String(bindings[0] ?? "");
       const results = this.state.bugs
@@ -533,6 +530,16 @@ export class MockD1Database {
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([day, count]) => ({ day, count }));
 
+      return { results: results as Row[] };
+    }
+
+    if (normalized.includes("SELECT id, body, created_at FROM issue_notes WHERE project_id = ? AND issue_id = ?")) {
+      const projectId = String(bindings[0] ?? "");
+      const issueId = String(bindings[1] ?? "");
+      const results = this.state.issueNotes
+        .filter((entry) => entry.project_id === projectId && entry.issue_id === issueId)
+        .sort((left, right) => descDate(left.created_at, right.created_at))
+        .map(({ id, body, created_at }) => ({ id, body, created_at }));
       return { results: results as Row[] };
     }
 
@@ -943,6 +950,31 @@ export class MockD1Database {
       );
       const changes = before - this.state.passkeys.length;
       return { success: true, meta: { changes } } as { success: true; meta: { changes: number } };
+    }
+
+    if (
+      normalized.includes(
+        "INSERT INTO bugs (id, project_id, user_uuid, title, description, state, screenshot_keys, reporter_email, issue_kind, context_json, card_json, created_at, updated_at)",
+      )
+    ) {
+      this.state.bugs.push({
+        id: String(bindings[0]), project_id: String(bindings[1]), user_uuid: String(bindings[2]),
+        title: String(bindings[3]), description: String(bindings[4]), state: String(bindings[5]),
+        screenshot_keys: String(bindings[6]),
+        reporter_email: bindings[7] == null ? null : String(bindings[7]),
+        issue_kind: String(bindings[8]), context_json: String(bindings[9]),
+        card_json: bindings[10] == null ? null : String(bindings[10]),
+        created_at: String(bindings[11]), updated_at: String(bindings[12]),
+      });
+      return { success: true };
+    }
+
+    if (normalized.includes("INSERT INTO issue_notes (id, project_id, issue_id, body, created_at) VALUES (?, ?, ?, ?, ?)")) {
+      this.state.issueNotes.push({
+        id: String(bindings[0]), project_id: String(bindings[1]), issue_id: String(bindings[2]),
+        body: String(bindings[3]), created_at: String(bindings[4]),
+      });
+      return { success: true };
     }
 
     if (

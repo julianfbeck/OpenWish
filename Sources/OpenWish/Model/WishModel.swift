@@ -39,7 +39,8 @@ final class WishModel: ObservableObject {
     @Published
     var completedList: [WishResponse] = []
 
-    /// This list includes pending feedback from all users.
+    /// All feedback visible to the current user. Pending feedback created by
+    /// other users is excluded even when returned by a legacy server.
     @Published
     var fullList: [WishResponse] = []
 
@@ -61,9 +62,12 @@ final class WishModel: ObservableObject {
             switch result {
             case .success(let response):
                 DispatchQueue.main.async {
-                    self.updateAllLists(with: response.list)
+                    let visibleList = response.list.filter {
+                        $0.state != .pending || $0.userUUID == UUIDManager.getUUID()
+                    }
+                    self.updateAllLists(with: visibleList)
                     self.shouldShowWatermark = response.shouldShowWatermark
-                    self.fullList = response.list
+                    self.fullList = visibleList
                 }
             case .failure(let error):
                 printError(self, error.reason.description)

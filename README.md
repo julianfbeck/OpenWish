@@ -10,7 +10,7 @@ OpenWish is a **self-hosted Cloudflare backend, admin dashboard, and Swift SDK f
 | --- | --- | --- |
 | Backend you control | ❌ | ✅ Cloudflare Workers + D1 |
 | Wishes (feature requests) | ✅ | ✅ — same Swift SDK contract |
-| Bug reports with screenshots | ❌ | ✅ R2-backed, up to 4 per bug |
+| Bug + card-data reports with screenshots | ❌ | ✅ R2-backed, up to 4 per issue |
 | User-visible "my bug reports" with admin replies | ❌ | ✅ |
 | Email notifications on new wishes / bugs | ❌ | ✅ via Cloudflare Email Routing |
 | Per-project notification email + send-test from the dashboard | ❌ | ✅ |
@@ -43,7 +43,8 @@ import OpenWish
 
 OpenWish.configure(
     with: "ow_api_<your-key>",
-    apiUrl: "https://wishkit.example.com/api"
+    apiUrl: "https://wishkit.example.com/api",
+    apiVersion: .automatic
 )
 ```
 
@@ -53,6 +54,67 @@ Resolution order for the API URL:
 3. fallback `https://www.wishkit.io/api` (i.e. the original WishKit hosted endpoint)
 
 `OpenWish.FeedbackListView()` and `OpenWish.BugReportView()` are the two public SwiftUI surfaces. Both work as `.sheet` content inside a `NavigationStack`.
+
+### V2 diagnostics and card data
+
+`.automatic` tries `/api/v2` and falls back to the original WishKit-compatible
+routes when an older deployment does not have V2 yet. Use `.v1` to pin an app
+to the legacy contract or `.v2` to require V2.
+
+Apps can attach arbitrary structured diagnostics without coupling OpenWish to
+RevenueCat or a particular analytics/database SDK:
+
+```swift
+OpenWish.configure(
+    with: "ow_api_<your-key>",
+    apiUrl: "https://wishkit.example.com/api",
+    issueContextProvider: {
+        [
+            "revenueCat": .object([
+                "appUserId": .string(Purchases.shared.appUserID),
+                "isPro": .bool(isPro)
+            ]),
+            "metrics": .object([
+                "cardsScanned": .number(Double(cardsScanned))
+            ])
+        ]
+    },
+    cardSearchProvider: { query in
+        await cardDatabase.search(query).map {
+            OpenWishCard(id: $0.id, name: $0.name, setName: $0.setName, number: $0.number)
+        }
+    }
+)
+```
+
+OpenWish adds SDK/app/OS/locale fields automatically. The provider is evaluated
+only when the user submits a report. Do not attach secrets or data your privacy
+policy does not permit you to collect.
+
+### Agent access
+
+The deployed Worker exposes a bearer-protected, stateless Streamable HTTP MCP
+server at `https://<your-host>/mcp`. Its 20 tools cover project CRUD/settings,
+analytics, feature and issue CRUD, state transitions, reporter replies, merges,
+private notes, screenshots, and test email. The endpoint uses the existing
+`OPENWISH_GLOBAL_API_KEY`; the dashboard shows the MCP URL and masked/revealable
+bearer under **Projects → Agent access (MCP)**.
+
+```json
+{
+  "mcpServers": {
+    "openwish": {
+      "url": "https://wishkit.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer <copy from OpenWish settings>"
+      }
+    }
+  }
+}
+```
+
+[`apps/mcp`](apps/mcp) remains available as a compatibility stdio bridge for
+clients that cannot connect to remote MCP servers.
 
 ## Hosting OpenWish
 

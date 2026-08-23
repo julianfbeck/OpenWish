@@ -492,6 +492,7 @@ export function DashboardBoardPage() {
           try {
             const response = await updateWishState(slug, selectedWish.id, state);
             setData(response);
+            return response.reporterNotification;
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not update request state.",
@@ -522,6 +523,7 @@ export function DashboardBoardPage() {
           try {
             const response = await createAdminComment(slug, selectedWish.id, description);
             setData(response);
+            return response.reporterNotification;
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not send admin note.",
@@ -566,4 +568,3 @@ export function DashboardBoardPage() {
     </>
   );
 }
-

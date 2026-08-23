@@ -94,23 +94,44 @@ export async function sendEmailViaCloudflare(
       },
     );
 
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          success?: boolean;
+          errors?: Array<{ code?: number; message?: string }>;
+          result?: {
+            delivered?: unknown[];
+            queued?: unknown[];
+            permanent_bounces?: unknown[];
+          };
+        }
+      | null;
+
+    const providerErrors =
+      payload?.errors?.map((error) => ({ code: error.code, message: error.message })) ?? [];
+
     if (!response.ok) {
-      console.error(`[openwish] Cloudflare email send failed: HTTP ${response.status}.`);
+      console.error(
+        `[openwish] Cloudflare email send failed: HTTP ${response.status}.`,
+        providerErrors,
+      );
       return false;
     }
 
-    const payload = (await response.json().catch(() => null)) as
-      | { success?: boolean; result?: { permanent_bounces?: unknown[] } }
-      | null;
-
     if (!payload?.success) {
-      console.error("[openwish] Cloudflare email send returned success:false.");
+      console.error("[openwish] Cloudflare email send returned success:false.", providerErrors);
       return false;
     }
 
     const bounces = payload.result?.permanent_bounces;
     if (Array.isArray(bounces) && bounces.length > 0) {
       console.error("[openwish] Cloudflare email send reported permanent bounces.");
+      return false;
+    }
+
+    const accepted =
+      (payload.result?.delivered?.length ?? 0) + (payload.result?.queued?.length ?? 0);
+    if (accepted === 0) {
+      console.error("[openwish] Cloudflare email send was not accepted or queued.");
       return false;
     }
 

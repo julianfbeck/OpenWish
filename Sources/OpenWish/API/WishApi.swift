@@ -11,26 +11,30 @@ import WishKitShared
 
 struct WishApi: RequestCreatable {
 
-    private static let baseUrl = "\(ProjectSettings.apiUrl)"
-
-    private static var endpoint = URL(string: "\(baseUrl)/wish")
+    private static var legacyEndpoint: URL? { URL(string: "\(ProjectSettings.apiUrl)/wish") }
+    private static var v2Endpoint: URL? { URL(string: "\(ProjectSettings.apiUrl)/v2/features") }
 
     // MARK: - URLRequests
 
     private static func fetchWishList() -> URLRequest? {
-        guard var url = endpoint else { return nil }
+        guard var url = legacyEndpoint else { return nil }
         url.appendPathComponent("list")
         return createAuthedGETReuqest(to: url)
     }
 
+    private static func fetchV2WishList() -> URLRequest? {
+        guard let url = v2Endpoint else { return nil }
+        return createAuthedGETReuqest(to: url)
+    }
+
     private static func createWish(_ createRequest: CreateWishRequest) -> URLRequest? {
-        guard var url = endpoint else { return nil }
+        guard var url = legacyEndpoint else { return nil }
         url.appendPathComponent("create")
         return createAuthedPOSTReuqest(to: url, with: createRequest)
     }
 
     private static func voteWish(_ voteRequest: VoteWishRequest) -> URLRequest? {
-        guard var url = endpoint else { return nil }
+        guard var url = legacyEndpoint else { return nil }
         url.appendPathComponent("vote")
         return createAuthedPOSTReuqest(to: url, with: voteRequest)
     }
@@ -40,12 +44,20 @@ struct WishApi: RequestCreatable {
     static func fetchWishList(
         completionHandler: @escaping (ApiResult<ListWishResponse, ApiError>) -> Void
     ) {
-        guard let request = fetchWishList() else {
+        let useV2 = ProjectSettings.shouldTryV2
+        guard let request = useV2 ? fetchV2WishList() : fetchWishList() else {
             completionHandler(.failure(ApiError(reason: .couldNotCreateRequest)))
             return
         }
 
-        Api.send(request: request, completionHandler: completionHandler)
+        Api.send(request: request) { (result: ApiResult<ListWishResponse, ApiError>) in
+            if case .failure = result, useV2, OpenWish.apiVersion == .automatic,
+               let fallback = fetchWishList() {
+                Api.send(request: fallback, completionHandler: completionHandler)
+            } else {
+                completionHandler(result)
+            }
+        }
     }
 
     static func createWish(

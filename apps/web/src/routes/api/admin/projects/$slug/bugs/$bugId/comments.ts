@@ -1,4 +1,4 @@
-import { createBugCommentRequestSchema } from "@openwish/shared";
+import { createBugCommentRequestSchema, type ReporterNotificationStatus } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireAdminProject } from "#/server/auth";
@@ -50,13 +50,14 @@ export const Route = createFileRoute("/api/admin/projects/$slug/bugs/$bugId/comm
           projectResult.project.id,
           params.bugId,
         );
+        let reporterNotification: ReporterNotificationStatus = "not_requested";
         if (meta) {
           const contact = await getReporterContact(
             requestContext.env.DB,
             projectResult.project.id,
             meta.userUuid,
           );
-          await notifyReporter(requestContext, projectResult.project, {
+          reporterNotification = await notifyReporter(requestContext, projectResult.project, {
             event: "comment",
             kind: "bug",
             userUuid: meta.userUuid,
@@ -68,7 +69,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/bugs/$bugId/comm
         }
 
         const list = await loadAdminBugs(requestContext.env.DB, projectResult.project);
-        return Response.json({ list }, { status: 201 });
+        return Response.json({ list, reporterNotification }, { status: 201 });
       },
     },
   },

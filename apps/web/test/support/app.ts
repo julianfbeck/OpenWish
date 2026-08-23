@@ -4,6 +4,7 @@ import type { Bindings, ServerRequestContext } from "../../src/server/types";
 import { Route as AuthLoginRoute } from "../../src/routes/api/auth/login";
 import { Route as AuthLogoutRoute } from "../../src/routes/api/auth/logout";
 import { Route as AuthSessionRoute } from "../../src/routes/api/auth/session";
+import { Route as AuthMcpRoute } from "../../src/routes/api/auth/mcp";
 import { Route as PasskeySummaryRoute } from "../../src/routes/api/auth/passkey/summary";
 import { Route as PasskeyListRoute } from "../../src/routes/api/auth/passkey/index";
 import { Route as PasskeyDeleteRoute } from "../../src/routes/api/auth/passkey/$credentialId";
@@ -39,6 +40,10 @@ import { Route as PublicUnsubscribeRoute } from "../../src/routes/api/public/uns
 import { Route as V1ProjectsRoute } from "../../src/routes/api/v1/projects";
 import { Route as V1ProjectWishesRoute } from "../../src/routes/api/v1/projects/$slug/wishes";
 import { Route as V1ProjectBugsRoute } from "../../src/routes/api/v1/projects/$slug/bugs";
+import { Route as V2FeaturesRoute } from "../../src/routes/api/v2/features";
+import { Route as V2IssuesRoute } from "../../src/routes/api/v2/issues";
+import { Route as V2AttachmentsRoute } from "../../src/routes/api/v2/attachments";
+import { Route as V2IssueNotesRoute } from "../../src/routes/api/v2/projects/$slug/issues/$issueId/notes";
 
 type ServerHandler = (input: {
   context: ServerRequestContext;
@@ -89,6 +94,7 @@ const routes: RouteDefinition[] = [
   route("POST", /^\/api\/auth\/login$/, [], routeHandlers(AuthLoginRoute)),
   route("POST", /^\/api\/auth\/logout$/, [], routeHandlers(AuthLogoutRoute)),
   route("GET", /^\/api\/auth\/session$/, [], routeHandlers(AuthSessionRoute)),
+  route("GET", /^\/api\/auth\/mcp$/, [], routeHandlers(AuthMcpRoute)),
   route("GET", /^\/api\/auth\/passkey\/summary$/, [], routeHandlers(PasskeySummaryRoute)),
   route("GET", /^\/api\/auth\/passkey\/?$/, [], routeHandlers(PasskeyListRoute)),
   route(
@@ -156,6 +162,12 @@ const routes: RouteDefinition[] = [
   route("POST", /^\/api\/bug\/create$/, [], routeHandlers(BugCreateRoute)),
   route("GET", /^\/api\/bug\/list$/, [], routeHandlers(BugListRoute)),
   route("POST", /^\/api\/bug\/screenshot$/, [], routeHandlers(BugScreenshotRoute)),
+  route("GET", /^\/api\/v2\/features$/, [], routeHandlers(V2FeaturesRoute)),
+  route("GET", /^\/api\/v2\/issues$/, [], routeHandlers(V2IssuesRoute)),
+  route("POST", /^\/api\/v2\/issues$/, [], routeHandlers(V2IssuesRoute)),
+  route("POST", /^\/api\/v2\/attachments$/, [], routeHandlers(V2AttachmentsRoute)),
+  route("GET", /^\/api\/v2\/projects\/([^/]+)\/issues\/([^/]+)\/notes$/, ["slug", "issueId"], routeHandlers(V2IssueNotesRoute)),
+  route("POST", /^\/api\/v2\/projects\/([^/]+)\/issues\/([^/]+)\/notes$/, ["slug", "issueId"], routeHandlers(V2IssueNotesRoute)),
   route("GET", /^\/api\/admin\/projects\/([^/]+)\/bugs$/, ["slug"], routeHandlers(AdminBugsRoute)),
   route(
     "PATCH",

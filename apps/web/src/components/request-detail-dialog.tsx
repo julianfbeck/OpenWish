@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { WishResponse, WishState } from "@openwish/shared";
+import type { ReporterNotificationStatus, WishResponse, WishState } from "@openwish/shared";
 import { wishStateLabels } from "@openwish/shared";
 
 import {
@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
+import { ReporterNotificationNotice } from "#/components/reporter-notification-notice";
 import {
   Dialog,
   DialogContent,
@@ -39,8 +40,8 @@ type RequestDetailDialogProps = {
   allWishes: WishResponse[];
   projectCreatedAt?: string;
   onWishSave: (input: { title: string; description: string }) => Promise<void> | void;
-  onStateChange: (state: WishState) => Promise<void> | void;
-  onCommentCreate: (description: string) => Promise<void> | void;
+  onStateChange: (state: WishState) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
+  onCommentCreate: (description: string) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
   onDeleteWish: () => Promise<void> | void;
   onMergeWish: (targetWishId: string) => Promise<void> | void;
 };
@@ -71,12 +72,16 @@ export function RequestDetailDialog({
   const [isUpdatingState, setIsUpdatingState] = useState(false);
   const [isDeletingWish, setIsDeletingWish] = useState(false);
   const [isMergingWish, setIsMergingWish] = useState(false);
+  const [reporterNotification, setReporterNotification] = useState<ReporterNotificationStatus | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       setCommentDraft("");
       setShowVoters(false);
       setShowMerge(false);
+      setReporterNotification(null);
+      setActionError(null);
     }
   }, [open]);
 
@@ -97,11 +102,11 @@ export function RequestDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-hidden border-white/10 bg-neutral-950 p-0 text-neutral-100 sm:max-w-[1100px]"
+        className="inset-0 left-0 top-0 h-dvh w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 bg-neutral-950 p-0 text-neutral-100 sm:max-w-none"
         showCloseButton
       >
         <DialogTitle className="sr-only">Request detail</DialogTitle>
-        <div className="grid max-h-[90vh] min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_240px]">
+        <div className="grid h-dvh min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_240px]">
           {/* ── Left: edit form ─────────────────────────────────────────── */}
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-r border-white/10 p-5">
             <div className="space-y-1.5">
@@ -189,10 +194,11 @@ export function RequestDetailDialog({
                       }
                       setIsMergingWish(true);
                       try {
+                        setActionError(null);
                         await onMergeWish(mergeTargetId);
                         setShowMerge(false);
-                      } catch {
-                        // upstream owns the visible error state
+                      } catch (error) {
+                        setActionError(error instanceof Error ? error.message : "Could not merge the request.");
                       } finally {
                         setIsMergingWish(false);
                       }
@@ -220,12 +226,13 @@ export function RequestDetailDialog({
                 onClick={async () => {
                   setIsSavingWish(true);
                   try {
+                    setActionError(null);
                     await onWishSave({
                       title: titleDraft.trim(),
                       description: descriptionDraft.trim(),
                     });
-                  } catch {
-                    // upstream owns the visible error state
+                  } catch (error) {
+                    setActionError(error instanceof Error ? error.message : "Could not update the request.");
                   } finally {
                     setIsSavingWish(false);
                   }
@@ -290,10 +297,11 @@ export function RequestDetailDialog({
                     const next = commentDraft.trim();
                     setIsSendingComment(true);
                     try {
-                      await onCommentCreate(next);
+                      setActionError(null);
+                      setReporterNotification(await onCommentCreate(next) ?? null);
                       setCommentDraft("");
-                    } catch {
-                      // upstream owns the visible error state
+                    } catch (error) {
+                      setActionError(error instanceof Error ? error.message : "Could not send the reply.");
                     } finally {
                       setIsSendingComment(false);
                     }
@@ -311,10 +319,11 @@ export function RequestDetailDialog({
                   }
                   setIsSendingComment(true);
                   try {
-                    await onCommentCreate(next);
+                    setActionError(null);
+                    setReporterNotification(await onCommentCreate(next) ?? null);
                     setCommentDraft("");
-                  } catch {
-                    // upstream owns the visible error state
+                  } catch (error) {
+                    setActionError(error instanceof Error ? error.message : "Could not send the reply.");
                   } finally {
                     setIsSendingComment(false);
                   }
@@ -327,6 +336,7 @@ export function RequestDetailDialog({
 
           {/* ── Right: metadata + actions ───────────────────────────────── */}
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-l border-white/10 p-5">
+            <ReporterNotificationNotice status={reporterNotification} error={actionError} />
             <MetadataRow label="Upvotes" value={String(wish.votingUsers.length)} />
             <MetadataRow label="Comments" value={String(wish.commentList.length)} />
             <div className="flex items-center justify-between gap-2">
@@ -336,9 +346,10 @@ export function RequestDetailDialog({
                 onValueChange={async (value) => {
                   setIsUpdatingState(true);
                   try {
-                    await onStateChange(value as WishState);
-                  } catch {
-                    // upstream owns the visible error state
+                    setActionError(null);
+                    setReporterNotification(await onStateChange(value as WishState) ?? null);
+                  } catch (error) {
+                    setActionError(error instanceof Error ? error.message : "Could not update the status.");
                   } finally {
                     setIsUpdatingState(false);
                   }
@@ -411,9 +422,10 @@ export function RequestDetailDialog({
                     onClick={async () => {
                       setIsDeletingWish(true);
                       try {
+                        setActionError(null);
                         await onDeleteWish();
-                      } catch {
-                        // upstream owns the visible error state
+                      } catch (error) {
+                        setActionError(error instanceof Error ? error.message : "Could not delete the request.");
                       } finally {
                         setIsDeletingWish(false);
                       }

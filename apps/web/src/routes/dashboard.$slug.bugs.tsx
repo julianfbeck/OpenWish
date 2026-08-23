@@ -24,12 +24,11 @@ export const Route = createFileRoute("/dashboard/$slug/bugs")({
   component: DashboardBugsPage,
 });
 
-type FilterState = "all" | BugState;
+type FilterState = BugState;
 
-const filterOrder: FilterState[] = ["all", ...bugStateValues];
+const filterOrder: FilterState[] = [...bugStateValues];
 
 const filterLabels: Record<FilterState, string> = {
-  all: "All",
   ...bugStateLabels,
 };
 
@@ -38,7 +37,7 @@ export function DashboardBugsPage() {
   const { error: sessionError, isLoading } = useDashboardSession();
   const [bugs, setBugs] = useState<BugResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterState>("all");
+  const [filter, setFilter] = useState<FilterState>("open");
   const [selectedBugId, setSelectedBugId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -46,7 +45,6 @@ export function DashboardBugsPage() {
 
   const counts = useMemo(() => {
     const result: Record<FilterState, number> = {
-      all: bugs?.length ?? 0,
       open: 0,
       confirmed: 0,
       inProgress: 0,
@@ -63,9 +61,6 @@ export function DashboardBugsPage() {
   const filtered = useMemo(() => {
     if (!bugs) {
       return [];
-    }
-    if (filter === "all") {
-      return bugs;
     }
     return bugs.filter((bug) => bug.state === filter);
   }, [bugs, filter]);
@@ -196,6 +191,7 @@ export function DashboardBugsPage() {
           try {
             const response = await updateAdminBug(slug, selectedBug.id, { state });
             setBugs(response.list);
+            return response.reporterNotification;
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not update bug state.",
@@ -210,6 +206,7 @@ export function DashboardBugsPage() {
           try {
             const response = await createAdminBugComment(slug, selectedBug.id, description);
             setBugs(response.list);
+            return response.reporterNotification;
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not send admin reply.",
@@ -270,6 +267,14 @@ function BugRow({
           <p className="truncate text-sm font-medium text-white">{bug.title}</p>
           <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-300">
             {bugStateLabels[bug.state]}
+          </span>
+          <span className={cn(
+            "rounded px-1.5 py-0.5 text-[10px] font-medium",
+            bug.kind === "cardData"
+              ? "bg-amber-400/15 text-amber-200"
+              : "bg-sky-400/15 text-sky-200",
+          )}>
+            {bug.kind === "cardData" ? "Card data" : "App bug"}
           </span>
           {bug.screenshotKeys.length > 1 ? (
             <span className="text-[10px] text-neutral-500">

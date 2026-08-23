@@ -51,7 +51,7 @@ struct WishlistViewIOS: View {
     private var presentationMode
 
     @State
-    private var selectedWishState: LocalWishState = .all
+    private var selectedWishState: LocalWishState = .library(.pending)
 
     @ObservedObject
     var wishModel: WishModel
@@ -91,7 +91,6 @@ struct WishlistViewIOS: View {
 
     private var feedbackStateSelection: [LocalWishState] {
         return [
-            .all,
             .library(.pending),
             .library(.inReview),
             .library(.planned),

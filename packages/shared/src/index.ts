@@ -211,6 +211,16 @@ export const adminTestEmailRequestSchema = z.object({
 });
 export type AdminTestEmailRequest = z.infer<typeof adminTestEmailRequestSchema>;
 
+export const reporterNotificationStatusValues = [
+  "not_requested",
+  "accepted",
+  "skipped_no_email",
+  "skipped_unsubscribed",
+  "failed",
+] as const;
+export const reporterNotificationStatusSchema = z.enum(reporterNotificationStatusValues);
+export type ReporterNotificationStatus = z.infer<typeof reporterNotificationStatusSchema>;
+
 export const adminProjectResponseSchema = z.object({
   project: z.object({
     name: z.string(),
@@ -228,6 +238,7 @@ export const adminProjectResponseSchema = z.object({
     totalVotes: z.number().int(),
   }),
   list: z.array(wishResponseSchema),
+  reporterNotification: reporterNotificationStatusSchema.optional(),
 });
 export type AdminProjectResponse = z.infer<typeof adminProjectResponseSchema>;
 
@@ -304,6 +315,23 @@ export const bugStateLabels: Record<BugState, string> = {
   duplicate: "Duplicate",
 };
 
+export const issueKindValues = ["bug", "cardData"] as const;
+export const issueKindSchema = z.enum(issueKindValues);
+export type IssueKind = z.infer<typeof issueKindSchema>;
+
+export const issueCardSchema = z.object({
+  id: z.string().min(1).max(200),
+  name: z.string().min(1).max(300),
+  setName: z.string().max(300).nullable().optional(),
+  number: z.string().max(100).nullable().optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+});
+export type IssueCard = z.infer<typeof issueCardSchema>;
+
+export const issueContextSchema = z.record(z.string(), z.unknown());
+export type IssueContext = z.infer<typeof issueContextSchema>;
+
 export const createBugRequestSchema = z.object({
   title: z.string().min(1).max(80),
   description: z.string().min(1).max(2_000),
@@ -338,6 +366,9 @@ export const bugResponseSchema = z.object({
   state: bugStateSchema,
   screenshotKeys: z.array(z.string()),
   reporterEmail: z.string().nullable().optional(),
+  kind: issueKindSchema.default("bug"),
+  context: issueContextSchema.default({}),
+  card: issueCardSchema.nullable().default(null),
   commentList: z.array(commentResponseSchema),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -346,6 +377,7 @@ export type BugResponse = z.infer<typeof bugResponseSchema>;
 
 export const adminBugListResponseSchema = z.object({
   list: z.array(bugResponseSchema),
+  reporterNotification: reporterNotificationStatusSchema.optional(),
 });
 export type AdminBugListResponse = z.infer<typeof adminBugListResponseSchema>;
 
@@ -375,6 +407,34 @@ export const createBugCommentRequestSchema = z.object({
   description: z.string().min(1).max(2_000),
 });
 export type CreateBugCommentRequest = z.infer<typeof createBugCommentRequestSchema>;
+
+export const createV2IssueRequestSchema = createBugRequestSchema.extend({
+  kind: issueKindSchema.default("bug"),
+  context: issueContextSchema.default({}),
+  card: issueCardSchema.nullable().optional(),
+});
+export type CreateV2IssueRequest = z.infer<typeof createV2IssueRequestSchema>;
+
+export const v2IssueListResponseSchema = z.object({
+  list: z.array(bugResponseSchema),
+});
+export type V2IssueListResponse = z.infer<typeof v2IssueListResponseSchema>;
+
+export const issueNoteSchema = z.object({
+  id: z.string().uuid(),
+  body: z.string(),
+  createdAt: z.string().datetime(),
+});
+export type IssueNote = z.infer<typeof issueNoteSchema>;
+
+export const createIssueNoteRequestSchema = z.object({
+  body: z.string().min(1).max(4_000),
+});
+export type CreateIssueNoteRequest = z.infer<typeof createIssueNoteRequestSchema>;
+
+export const issueNoteListResponseSchema = z.object({
+  list: z.array(issueNoteSchema),
+});
 
 export const passkeySummarySchema = z.object({
   credentialId: z.string(),

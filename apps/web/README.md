@@ -141,7 +141,7 @@ pnpm run deploy
 | `OPENWISH_BOOTSTRAP_TOKEN` | optional | If set, allows `POST /api/admin/projects/bootstrap` to create projects without a dashboard session. Useful for the very first project before you log in. **Delete after first use** for the strongest posture. |
 | `OPENWISH_TURNSTILE_SECRET_KEY` | required for the public form | Server-side secret paired with the site key above. Used on `siteverify` calls. Set with `wrangler secret put OPENWISH_TURNSTILE_SECRET_KEY`. |
 | `CLOUDFLARE_EMAIL_API_TOKEN` | required for reporter emails | API token with the `email_sending:write` scope (create at `dash.cloudflare.com/profile/api-tokens`). Set with `wrangler secret put CLOUDFLARE_EMAIL_API_TOKEN`. |
-| `OPENWISH_GLOBAL_API_KEY` | required for the v1/CLI API | A single secret authorizing the cross-project `/api/v1/**` API (used by the Go CLI). Generate with `openssl rand -base64 32`; set with `wrangler secret put OPENWISH_GLOBAL_API_KEY`. |
+| `OPENWISH_GLOBAL_API_KEY` | required for the v1/CLI API and remote MCP | A single secret authorizing all projects through `/api/v1/**` and `/mcp`. Generate with `openssl rand -base64 32`; set with `wrangler secret put OPENWISH_GLOBAL_API_KEY`. Authenticated dashboard users can reveal/copy it under Projects → Agent access (MCP). |
 
 ---
 
@@ -243,6 +243,27 @@ is the primary consumer.
 
 Missing/invalid key → 401; key not configured on the server → 503; unknown project → 404.
 
+### Remote MCP (`/mcp`) — for coding agents
+
+`POST /mcp` is a stateless Streamable HTTP MCP server built with Cloudflare's
+Agents SDK and MCP SDK v2. It accepts only:
+
+```http
+Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>
+```
+
+The 20 tools expose the dashboard's complete operational surface: project
+CRUD/settings and analytics; feature creation, editing, workflow, replies,
+merge, and deletion; bug/card-data issue creation, editing, workflow, replies,
+private notes, screenshot reads, and deletion; plus test email. Reply and done
+tools preserve dashboard side effects, including reporter emails and explicit
+`reporterNotification` results. Destructive tools are annotated and project
+deletion requires the slug twice.
+
+The URL and bearer are available only to an authenticated dashboard session at
+Projects → Agent access (MCP). The token response is marked `no-store`; do not
+put it in source control, logs, prompts, or tool output.
+
 ### Public feedback page
 
 Browsers can submit bug reports or feature requests to a project at `https://<your-host>/feedback/<slug>` once you flip the **Public feedback form** toggle on the project's dashboard page. The page renders a Cloudflare Turnstile widget; `OPENWISH_TURNSTILE_SITE_KEY` (var) and `OPENWISH_TURNSTILE_SECRET_KEY` (secret) must be set or the page will show a configuration warning. This URL is what you'd put in App Store Connect's app-support field so testers and end users have a way to reach you without needing an iOS install. Cloudflare's documented dummy keys (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) always pass and are fine for local dev — see `.dev.vars.example`.
@@ -256,6 +277,10 @@ Live in `migrations/`. Each new schema change ships as `00NN_description.sql`. T
 ```bash
 pnpm exec wrangler d1 migrations apply openwish --remote
 ```
+
+Migration `0009_v2_issues.sql` must be applied before V2 clients submit
+diagnostic context, card-data issues, or MCP private notes. The legacy
+WishKit-compatible endpoints continue working before and after this migration.
 
 ---
 

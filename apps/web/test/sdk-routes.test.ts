@@ -133,6 +133,50 @@ describe("Swift SDK routes", () => {
     });
   });
 
+  it("only exposes pending wishes to the user who created them", async () => {
+    db.state.wishes.push(
+      {
+        id: existingWishId,
+        project_id: projectId,
+        user_uuid: ownerUuid,
+        title: "Private pending request",
+        description: "Only its creator should see this.",
+        state: "pending",
+        created_at: "2026-04-09T08:00:00.000Z",
+        updated_at: "2026-04-09T08:00:00.000Z",
+      },
+      {
+        id: "66666666-6666-4666-8666-666666666666",
+        project_id: projectId,
+        user_uuid: ownerUuid,
+        title: "Public planned request",
+        description: "Everyone may see this.",
+        state: "planned",
+        created_at: "2026-04-09T08:01:00.000Z",
+        updated_at: "2026-04-09T08:01:00.000Z",
+      },
+    );
+
+    const ownerResponse = await requestApp(
+      "/api/wish/list",
+      { headers: sdkHeaders(ownerUuid) },
+      env,
+    );
+    const ownerList = listWishResponseSchema.parse(await ownerResponse.json());
+    expect(ownerList.list.map((wish) => wish.title).sort()).toEqual([
+      "Private pending request",
+      "Public planned request",
+    ]);
+
+    const otherResponse = await requestApp(
+      "/api/wish/list",
+      { headers: sdkHeaders(voterUuid) },
+      env,
+    );
+    const otherList = listWishResponseSchema.parse(await otherResponse.json());
+    expect(otherList.list.map((wish) => wish.title)).toEqual(["Public planned request"]);
+  });
+
   it("creates wishes and makes them visible on the next list fetch", async () => {
     const createResponse = await requestApp(
       "/api/wish/create",
@@ -255,7 +299,7 @@ describe("Swift SDK routes", () => {
     const listResponse = await requestApp(
       "/api/wish/list",
       {
-        headers: sdkHeaders(commenterUuid),
+        headers: sdkHeaders(ownerUuid),
       },
       env,
     );

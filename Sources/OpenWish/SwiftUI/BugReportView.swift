@@ -27,6 +27,9 @@ struct BugComposeView: View {
     var onSubmitted: (() -> Void)? = nil
 
     @State
+    private var issueKind: OpenWishIssueKind = .bug
+
+    @State
     private var title: String = ""
 
     @State
@@ -37,6 +40,21 @@ struct BugComposeView: View {
 
     @State
     private var attachments: [BugAttachment] = []
+
+    @State
+    private var cardQuery: String = ""
+
+    @State
+    private var cardResults: [OpenWishCard] = []
+
+    @State
+    private var selectedCard: OpenWishCard?
+
+    @State
+    private var isSearchingCards = false
+
+    @State
+    private var showingCamera = false
 
     @State
     private var pendingUploads: Int = 0
@@ -58,9 +76,15 @@ struct BugComposeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                issueKindPicker
+
                 titleField
 
                 descriptionField
+
+                if issueKind == .cardData {
+                    cardSearchSection
+                }
 
                 emailField
 
@@ -77,7 +101,7 @@ struct BugComposeView: View {
             .padding(20)
         }
         .background(backgroundColor.ignoresSafeArea())
-        .navigationTitle("Report a bug")
+        .navigationTitle(issueKind == .bug ? "Report a bug" : "Report card data")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -93,6 +117,17 @@ struct BugComposeView: View {
     }
 
     // MARK: - Sub-views
+
+    private var issueKindPicker: some View {
+        Picker("Report type", selection: $issueKind) {
+            Text("App bug").tag(OpenWishIssueKind.bug)
+            Text("Card or detection").tag(OpenWishIssueKind.cardData)
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: issueKind) { newValue in
+            if newValue == .bug { selectedCard = nil }
+        }
+    }
 
     private var titleField: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -219,9 +254,62 @@ struct BugComposeView: View {
                     .font(.caption2)
                     .foregroundColor(.red)
             } else {
-                Text("So we can follow up on this report.")
+                Text("Not required, but an email helps us ask follow-up questions and fix the issue faster.")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private var cardSearchSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Affected card")
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(textColor)
+            if let selectedCard {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(selectedCard.name).font(.subheadline.weight(.semibold))
+                        Text([selectedCard.setName, selectedCard.number].compactMap { $0 }.joined(separator: " · "))
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("Change") { self.selectedCard = nil }
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 10).fill(fieldBackgroundColor))
+            } else if OpenWish.cardSearchProvider == nil {
+                Text("This app has not connected its card database. Attach a photo and describe the card below.")
+                    .font(.caption).foregroundColor(.secondary)
+            } else {
+                HStack {
+                    TextField("Name, set, or card number", text: $cardQuery)
+                        .textInputAutocapitalization(.never)
+                        .padding(.horizontal, 12)
+                        .frame(height: 44)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(fieldBackgroundColor))
+                    Button { Task { await searchCards() } } label: {
+                        if isSearchingCards { ProgressView() } else { Image(systemName: "magnifyingglass") }
+                    }
+                    .disabled(cardQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSearchingCards)
+                }
+                ForEach(cardResults) { card in
+                    Button {
+                        selectedCard = card
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(card.name).foregroundColor(.primary)
+                                Text([card.setName, card.number].compactMap { $0 }.joined(separator: " · "))
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -289,6 +377,27 @@ struct BugComposeView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                Button {
+                    showingCamera = true
+                } label: {
+                    Label(issueKind == .cardData ? "Photograph card" : "Take photo", systemImage: "camera")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Color.gray.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(remainingAttachmentSlots == 0)
+                .sheet(isPresented: $showingCamera) {
+                    BugCameraPicker { image in
+                        handlePickedItem(data: image.jpegData(compressionQuality: 0.9) ?? Data(), image: image)
+                    }
+                }
+            }
         }
     }
 
@@ -302,7 +411,7 @@ struct BugComposeView: View {
                     ProgressView()
                         .tint(submitTextColor)
                 } else {
-                    Text("Send bug report")
+                    Text(issueKind == .bug ? "Send bug report" : "Send card report")
                         .fontWeight(.semibold)
                         .foregroundColor(submitTextColor)
                 }
@@ -345,6 +454,14 @@ struct BugComposeView: View {
 
     private func handleScreenshotLoadFailure() {
         errorMessage = "Could not load screenshot from Photos. Please try another image."
+    }
+
+    @MainActor
+    private func searchCards() async {
+        guard let provider = OpenWish.cardSearchProvider else { return }
+        isSearchingCards = true
+        cardResults = await provider(cardQuery.trimmingCharacters(in: .whitespacesAndNewlines))
+        isSearchingCards = false
     }
 
     private func handlePickedItem(data: Data, image: UIImage) {
@@ -437,7 +554,10 @@ struct BugComposeView: View {
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             email: (emailIsValid && !trimmedEmail.isEmpty) ? trimmedEmail : nil,
-            screenshotKeys: attachments.map { $0.storageKey }
+            screenshotKeys: attachments.map { $0.storageKey },
+            kind: issueKind,
+            context: OpenWish.issueContext(),
+            card: selectedCard
         )
 
         let result = await BugApi.createBug(request: payload)
@@ -520,6 +640,39 @@ private struct PreparedBugScreenshot {
     let data: Data
     let preview: UIImage
     let contentType: String
+}
+
+@available(iOS 15.0, *)
+private struct BugCameraPicker: UIViewControllerRepresentable {
+    let onImage: (UIImage) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: BugCameraPicker
+        init(parent: BugCameraPicker) { self.parent = parent }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage { parent.onImage(image) }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
 }
 
 @available(iOS 16.0, *)
@@ -617,7 +770,7 @@ struct BugReportContainer: View {
             .accessibilityLabel("Report a new bug")
         }
         .background(backgroundColor.ignoresSafeArea())
-        .navigationTitle("Bug reports")
+        .navigationTitle("Reports")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {

@@ -19,6 +19,7 @@ import { Card, CardContent } from "#/components/ui/card";
 import { DashboardChrome, DashboardPageHeader } from "#/components/dashboard-shell";
 import { Input } from "#/components/ui/input";
 import { PasskeyPanel } from "#/components/passkey-panel";
+import { McpAccessPanel } from "#/components/mcp-access-panel";
 import {
   ApiRequestError,
   createAdminProject,
@@ -272,6 +273,7 @@ export function DashboardProjectsPage() {
           </Card>
 
             <PasskeyPanel />
+            <McpAccessPanel />
           </div>
         </div>
       </section>

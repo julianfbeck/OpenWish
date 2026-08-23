@@ -27,25 +27,18 @@ function truncate(value: string, max = 240) {
   return `${value.slice(0, max - 1)}…`;
 }
 
-function buildMessage(input: {
-  from: string;
-  to: string;
-  subject: string;
-  text: string;
-}) {
-  const msg = createMimeMessage();
-  msg.setSender({ name: "OpenWish", addr: input.from });
-  msg.setRecipient(input.to);
-  msg.setSubject(input.subject);
-  msg.addMessage({ contentType: "text/plain", data: input.text });
-
-  return new EmailMessage(input.from, input.to, msg.asRaw());
+function buildMessage(input: { from: string; to: string; subject: string; text: string }) {
+  const message = createMimeMessage();
+  message.setSender({ name: "OpenWish", addr: input.from });
+  message.setRecipient(input.to);
+  message.setSubject(input.subject);
+  message.addMessage({ contentType: "text/plain", data: input.text });
+  return new EmailMessage(input.from, input.to, message.asRaw());
 }
 
 async function send(env: Bindings, to: string, subject: string, text: string) {
   const from = fromAddress(env);
-  const message = buildMessage({ from, to, subject, text });
-  await env.NOTIFICATION_EMAIL.send(message);
+  await env.NOTIFICATION_EMAIL.send(buildMessage({ from, to, subject, text }));
 }
 
 export async function sendTestEmail(env: Bindings, to: string, project: ProjectRow) {

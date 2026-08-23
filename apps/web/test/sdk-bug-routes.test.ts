@@ -120,6 +120,42 @@ describe("SDK bug routes", () => {
     expect(JSON.parse(bug?.screenshot_keys ?? "[]")).toEqual([key]);
   });
 
+  it("creates and reads a V2 card-data issue with generic diagnostic context", async () => {
+    const createResponse = await requestApp(
+      "/api/v2/issues",
+      {
+        method: "POST",
+        headers: sdkHeaders(ownerUuid, { "content-type": "application/json" }),
+        body: JSON.stringify({
+          kind: "cardData",
+          title: "Wrong card detected",
+          description: "The scanner selected the alternate art.",
+          screenshotKeys: [],
+          context: {
+            revenueCat: { appUserId: "rc-anonymous", entitlement: "pro" },
+            metrics: { scannedCards: 417 },
+          },
+          card: { id: "OP01-001", name: "Roronoa Zoro", number: "OP01-001" },
+        }),
+      },
+      env,
+    );
+    expect(createResponse.status).toBe(201);
+
+    const listResponse = await requestApp(
+      "/api/v2/issues",
+      { headers: sdkHeaders(ownerUuid) },
+      env,
+    );
+    expect(listResponse.status).toBe(200);
+    const payload = (await listResponse.json()) as {
+      list: Array<{ kind: string; context: Record<string, unknown>; card: { id: string } | null }>;
+    };
+    expect(payload.list[0]?.kind).toBe("cardData");
+    expect(payload.list[0]?.context).toMatchObject({ metrics: { scannedCards: 417 } });
+    expect(payload.list[0]?.card?.id).toBe("OP01-001");
+  });
+
   it("rejects screenshot uploads with disallowed content types", async () => {
     const response = await requestApp(
       "/api/bug/screenshot",

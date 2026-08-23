@@ -26,7 +26,11 @@ export const Route = createFileRoute("/api/admin/projects/$slug/test-email")({
         }
 
         try {
-          await sendTestEmail(requestContext.env, bodyResult.data.to, projectResult.project);
+          await sendTestEmail(
+            requestContext.env,
+            bodyResult.data.to,
+            projectResult.project,
+          );
         } catch (error) {
           const message = error instanceof Error ? error.message : "Could not send email.";
           return publicError(500, message);

@@ -139,6 +139,31 @@ describe("global API (/api/v1)", () => {
     expect(payload.list.map((bug) => bug.title)).toContain("Crash");
   });
 
+  it("adds and reads private V2 issue notes with the global agent key", async () => {
+    const createIssue = await requestApp(
+      `/api/v1/projects/${projectSlug}/bugs`,
+      authed("POST", { title: "Detection", description: "Wrong card.", screenshotKeys: [] }),
+      env,
+    );
+    const issue = (await createIssue.json()) as { id: string };
+    const createNote = await requestApp(
+      `/api/v2/projects/${projectSlug}/issues/${issue.id}/notes`,
+      authed("POST", { body: "Reproduce with the Japanese card database." }),
+      env,
+    );
+    expect(createNote.status).toBe(201);
+
+    const list = await requestApp(
+      `/api/v2/projects/${projectSlug}/issues/${issue.id}/notes`,
+      authed("GET"),
+      env,
+    );
+    expect(list.status).toBe(200);
+    expect((await list.json()) as unknown).toMatchObject({
+      list: [{ body: "Reproduce with the Japanese card database." }],
+    });
+  });
+
   it("404s an unknown project", async () => {
     const response = await requestApp("/api/v1/projects/missing/wishes", authed("GET"), env);
     expect(response.status).toBe(404);

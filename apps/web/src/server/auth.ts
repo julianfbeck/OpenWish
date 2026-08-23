@@ -83,6 +83,39 @@ export function requireGlobalApiKey({ env, request }: RequestLike) {
   return { ok: true as const };
 }
 
+// Remote MCP deliberately accepts only the standard Authorization bearer
+// header. Unlike the programmatic REST API it has no legacy x-* header
+// fallback, which keeps MCP client configuration unambiguous.
+export function requireMcpBearer({ env, request }: RequestLike) {
+  const expected = env.OPENWISH_GLOBAL_API_KEY?.trim();
+  const provided = extractBearerToken(request);
+
+  if (!expected) {
+    return {
+      ok: false as const,
+      response: new Response("OpenWish MCP is not configured.", {
+        status: 503,
+        headers: { "Cache-Control": "no-store" },
+      }),
+    };
+  }
+
+  if (!provided || !timingSafeEqual(provided, expected)) {
+    return {
+      ok: false as const,
+      response: new Response("Invalid or missing bearer token.", {
+        status: 401,
+        headers: {
+          "Cache-Control": "no-store",
+          "WWW-Authenticate": 'Bearer realm="OpenWish MCP"',
+        },
+      }),
+    };
+  }
+
+  return { ok: true as const };
+}
+
 export async function requireProjectBySlug({ env }: Omit<RequestLike, "request">, slug: string) {
   const project = await projectByField(env.DB, "slug", slug);
   if (!project) {

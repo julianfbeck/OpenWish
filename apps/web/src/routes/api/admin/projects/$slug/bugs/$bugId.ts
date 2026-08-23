@@ -1,4 +1,4 @@
-import { adminBugUpdateSchema } from "@openwish/shared";
+import { adminBugUpdateSchema, type ReporterNotificationStatus } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireAdminProject } from "#/server/auth";
@@ -50,13 +50,14 @@ export const Route = createFileRoute("/api/admin/projects/$slug/bugs/$bugId")({
         }
 
         // Email the reporter only on a real transition into "fixed".
+        let reporterNotification: ReporterNotificationStatus = "not_requested";
         if (before && bodyResult.data.state === "fixed" && before.state !== "fixed") {
           const contact = await getReporterContact(
             requestContext.env.DB,
             projectResult.project.id,
             before.userUuid,
           );
-          await notifyReporter(requestContext, projectResult.project, {
+          reporterNotification = await notifyReporter(requestContext, projectResult.project, {
             event: "resolved",
             kind: "bug",
             userUuid: before.userUuid,
@@ -67,7 +68,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/bugs/$bugId")({
         }
 
         const list = await loadAdminBugs(requestContext.env.DB, projectResult.project);
-        return Response.json({ list });
+        return Response.json({ list, reporterNotification });
       },
       DELETE: async ({ context, params, request }) => {
         const requestContext = requireRequestContext(context);

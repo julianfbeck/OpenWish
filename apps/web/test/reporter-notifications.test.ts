@@ -58,7 +58,10 @@ function emailFetchMock() {
       body: JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>,
     });
     return new Response(
-      JSON.stringify({ success: true, result: { delivered: [], queued: [], permanent_bounces: [] } }),
+      JSON.stringify({
+        success: true,
+        result: { delivered: [], queued: ["accepted@example.com"], permanent_bounces: [] },
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   });
@@ -156,6 +159,7 @@ describe("reporter notification emails", () => {
     );
 
     expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ reporterNotification: "accepted" });
     expect(mail.calls).toHaveLength(1);
     expect(mail.calls[0]?.url).toContain("/accounts/cf-account-123/email/sending/send");
     expect(mail.calls[0]?.body.to).toBe(bugReporterEmail);
@@ -178,6 +182,7 @@ describe("reporter notification emails", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ reporterNotification: "accepted" });
     expect(mail.calls).toHaveLength(1);
     expect(mail.calls[0]?.body.to).toBe(bugReporterEmail);
     expect(String(mail.calls[0]?.body.subject)).toContain("fixed");
@@ -198,6 +203,7 @@ describe("reporter notification emails", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ reporterNotification: "not_requested" });
     expect(mail.calls).toHaveLength(0);
   });
 
@@ -231,6 +237,7 @@ describe("reporter notification emails", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ reporterNotification: "accepted" });
     expect(mail.calls).toHaveLength(1);
     expect(mail.calls[0]?.body.to).toBe(wishOwnerEmail);
     expect(String(mail.calls[0]?.body.subject)).toContain("implemented");
@@ -251,6 +258,7 @@ describe("reporter notification emails", () => {
     );
 
     expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ reporterNotification: "accepted" });
     expect(mail.calls).toHaveLength(1);
     expect(mail.calls[0]?.body.to).toBe(wishOwnerEmail);
     expect(String(mail.calls[0]?.body.text)).toContain("Shipping next week!");
@@ -260,7 +268,7 @@ describe("reporter notification emails", () => {
     db.state.users[0]!.email = null;
     const cookie = await login(env);
 
-    await requestApp(
+    const response = await requestApp(
       `/api/admin/projects/${projectSlug}/wishes/${wishId}`,
       {
         method: "PATCH",
@@ -270,6 +278,7 @@ describe("reporter notification emails", () => {
       env,
     );
 
+    expect(await response.json()).toMatchObject({ reporterNotification: "skipped_no_email" });
     expect(mail.calls).toHaveLength(0);
   });
 
@@ -277,7 +286,7 @@ describe("reporter notification emails", () => {
     db.state.users[0]!.email_unsubscribed = 1;
     const cookie = await login(env);
 
-    await requestApp(
+    const response = await requestApp(
       `/api/admin/projects/${projectSlug}/wishes/${wishId}/comments`,
       {
         method: "POST",
@@ -287,6 +296,7 @@ describe("reporter notification emails", () => {
       env,
     );
 
+    expect(await response.json()).toMatchObject({ reporterNotification: "skipped_unsubscribed" });
     expect(mail.calls).toHaveLength(0);
   });
 

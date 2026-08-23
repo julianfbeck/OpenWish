@@ -17,5 +17,18 @@ struct ProjectSettings {
         let wishKitUrl = ProcessInfo.processInfo.environment["wishkit-url"]
         return wishKitUrl ?? "https://www.wishkit.io/api"
     }
-    static let sdkVersion = "4.8.0"
+    static let sdkVersion = "5.0.0"
+
+    static var shouldTryV2: Bool {
+        switch OpenWish.apiVersion {
+        case .v1:
+            return false
+        case .v2:
+            return true
+        case .automatic:
+            // The hosted WishKit service only implements the legacy contract.
+            // Custom/self-hosted OpenWish URLs negotiate V2 with V1 fallback.
+            return OpenWish.apiUrlOverride?.isEmpty == false
+        }
+    }
 }

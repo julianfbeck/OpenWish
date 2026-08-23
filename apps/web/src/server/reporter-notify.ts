@@ -26,15 +26,19 @@ export async function notifyReporter(
     unsubscribed: boolean;
     comment?: string;
   },
-): Promise<void> {
+): Promise<"accepted" | "skipped_no_email" | "skipped_unsubscribed" | "failed"> {
   const { env } = ctx;
-  if (!input.to || input.unsubscribed) {
-    return;
+  if (!input.to) {
+    return "skipped_no_email";
+  }
+  if (input.unsubscribed) {
+    return "skipped_unsubscribed";
   }
 
   const token = await signUnsubscribeToken(env, project.id, input.userUuid);
   if (!token) {
-    return;
+    console.error("[openwish] Reporter email skipped: unsubscribe signing is not configured.");
+    return "failed";
   }
 
   const unsubscribeUrl = buildUnsubscribeUrl(env, token);
@@ -58,10 +62,12 @@ export async function notifyReporter(
           link,
         });
 
-  const guarded = work.then(() => undefined).catch(() => undefined);
-  if (ctx.executionContext) {
-    ctx.executionContext.waitUntil(guarded);
-  } else {
-    await guarded;
+  try {
+    // Cloudflare's synchronous API confirms acceptance/queueing, not final
+    // SMTP delivery. Final delivery can still fail later in its Activity Log.
+    return (await work) ? "accepted" : "failed";
+  } catch (error) {
+    console.error("[openwish] Reporter email threw.", error);
+    return "failed";
   }
 }

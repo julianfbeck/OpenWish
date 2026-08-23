@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { BugResponse, BugState } from "@openwish/shared";
+import type { BugResponse, BugState, ReporterNotificationStatus } from "@openwish/shared";
 import { bugStateLabels } from "@openwish/shared";
 
 import {
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "#/components/ui/select";
 import { Textarea } from "#/components/ui/textarea";
+import { ReporterNotificationNotice } from "#/components/reporter-notification-notice";
 import { bugScreenshotUrl } from "#/lib/api";
 import { formatDate } from "#/lib/format";
 import { cn } from "#/lib/utils";
@@ -38,8 +39,8 @@ type BugDetailDialogProps = {
   bug: BugResponse | null;
   slug: string;
   onBugSave: (input: { title: string; description: string }) => Promise<void> | void;
-  onStateChange: (state: BugState) => Promise<void> | void;
-  onCommentCreate: (description: string) => Promise<void> | void;
+  onStateChange: (state: BugState) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
+  onCommentCreate: (description: string) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
   onDeleteBug: () => Promise<void> | void;
 };
 
@@ -61,11 +62,15 @@ export function BugDetailDialog({
   const [isUpdatingState, setIsUpdatingState] = useState(false);
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reporterNotification, setReporterNotification] = useState<ReporterNotificationStatus | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       setCommentDraft("");
       setPreviewKey(null);
+      setReporterNotification(null);
+      setActionError(null);
     }
   }, [open]);
 
@@ -84,11 +89,11 @@ export function BugDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-hidden border-white/10 bg-neutral-950 p-0 text-neutral-100 sm:max-w-[1100px]"
+        className="inset-0 left-0 top-0 h-dvh w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 bg-neutral-950 p-0 text-neutral-100 sm:max-w-none"
         showCloseButton
       >
         <DialogTitle className="sr-only">Bug detail</DialogTitle>
-        <div className="grid max-h-[90vh] min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_240px]">
+        <div className="grid h-dvh min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_240px]">
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-r border-white/10 p-5">
             <div className="space-y-1.5">
               <div className="flex items-baseline justify-between gap-2">
@@ -146,6 +151,19 @@ export function BugDetailDialog({
               </p>
             </div>
 
+            {bug.card ? (
+              <div className="space-y-2 rounded-md border border-amber-300/15 bg-amber-300/[0.04] p-3">
+                <p className="text-[11px] uppercase tracking-wider text-amber-200">Affected card</p>
+                <p className="text-sm font-medium text-white">{bug.card.name}</p>
+                <p className="text-xs text-neutral-400">
+                  {[bug.card.setName, bug.card.number].filter(Boolean).join(" · ") || bug.card.id}
+                </p>
+                {bug.card.imageUrl ? (
+                  <img src={bug.card.imageUrl} alt={bug.card.name} className="max-h-48 rounded object-contain" />
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="mt-auto flex items-center gap-2 pt-2">
               <Button
                 size="sm"
@@ -167,12 +185,13 @@ export function BugDetailDialog({
                 onClick={async () => {
                   setIsSavingBug(true);
                   try {
+                    setActionError(null);
                     await onBugSave({
                       title: titleDraft.trim(),
                       description: descriptionDraft.trim(),
                     });
-                  } catch {
-                    /* upstream */
+                  } catch (error) {
+                    setActionError(error instanceof Error ? error.message : "Could not update the bug.");
                   } finally {
                     setIsSavingBug(false);
                   }
@@ -217,7 +236,7 @@ export function BugDetailDialog({
             <div className="flex items-center gap-2 border-t border-white/10 p-3">
               <Input
                 className="h-9 flex-1 border-white/10 bg-neutral-900 text-neutral-100"
-                placeholder="Write a comment…"
+                placeholder={bug.reporterEmail ? "Reply by email…" : "Write an internal reply…"}
                 maxLength={DESCRIPTION_MAX}
                 value={commentDraft}
                 onChange={(event) => setCommentDraft(event.target.value)}
@@ -227,10 +246,11 @@ export function BugDetailDialog({
                     const next = commentDraft.trim();
                     setIsSendingComment(true);
                     try {
-                      await onCommentCreate(next);
+                      setActionError(null);
+                      setReporterNotification(await onCommentCreate(next) ?? null);
                       setCommentDraft("");
-                    } catch {
-                      /* upstream */
+                    } catch (error) {
+                      setActionError(error instanceof Error ? error.message : "Could not send the reply.");
                     } finally {
                       setIsSendingComment(false);
                     }
@@ -248,21 +268,23 @@ export function BugDetailDialog({
                   }
                   setIsSendingComment(true);
                   try {
-                    await onCommentCreate(next);
+                    setActionError(null);
+                    setReporterNotification(await onCommentCreate(next) ?? null);
                     setCommentDraft("");
-                  } catch {
-                    /* upstream */
+                  } catch (error) {
+                    setActionError(error instanceof Error ? error.message : "Could not send the reply.");
                   } finally {
                     setIsSendingComment(false);
                   }
                 }}
               >
-                {isSendingComment ? "Sending…" : "Send"}
+                {isSendingComment ? "Sending…" : bug.reporterEmail ? "Reply & email" : "Send"}
               </Button>
             </div>
           </div>
 
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-l border-white/10 p-5">
+            <ReporterNotificationNotice status={reporterNotification} error={actionError} />
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-neutral-300">Status</span>
               <Select
@@ -270,9 +292,10 @@ export function BugDetailDialog({
                 onValueChange={async (value) => {
                   setIsUpdatingState(true);
                   try {
-                    await onStateChange(value as BugState);
-                  } catch {
-                    /* upstream */
+                    setActionError(null);
+                    setReporterNotification(await onStateChange(value as BugState) ?? null);
+                  } catch (error) {
+                    setActionError(error instanceof Error ? error.message : "Could not update the status.");
                   } finally {
                     setIsUpdatingState(false);
                   }
@@ -323,6 +346,24 @@ export function BugDetailDialog({
               )}
             </div>
 
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wider text-neutral-500">Diagnostic context</p>
+              {Object.keys(bug.context).length === 0 ? (
+                <p className="text-xs text-neutral-500">No V2 context attached.</p>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(bug.context).map(([key, value]) => (
+                    <div key={key} className="rounded border border-white/10 bg-neutral-900 p-2">
+                      <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-500">{key}</p>
+                      <pre className="overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-neutral-300">
+                        {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
@@ -348,9 +389,10 @@ export function BugDetailDialog({
                     onClick={async () => {
                       setIsDeleting(true);
                       try {
+                        setActionError(null);
                         await onDeleteBug();
-                      } catch {
-                        /* upstream */
+                      } catch (error) {
+                        setActionError(error instanceof Error ? error.message : "Could not delete the bug.");
                       } finally {
                         setIsDeleting(false);
                       }

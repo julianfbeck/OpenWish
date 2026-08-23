@@ -105,6 +105,9 @@ export type BugRow = {
   state: string;
   screenshot_keys: string;
   reporter_email: string | null;
+  issue_kind?: string | null;
+  context_json?: string | null;
+  card_json?: string | null;
   created_at: string;
   updated_at: string;
 };

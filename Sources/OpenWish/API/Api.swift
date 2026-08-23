@@ -12,6 +12,7 @@ import WishKitShared
 struct Api: RequestCreatable {
     enum Version: String {
         case v1
+        case v2
     }
 }
 
@@ -100,4 +101,3 @@ extension Api {
         }
     }
 }
-

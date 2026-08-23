@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { requireProjectFromApiKey } from "#/server/auth";
+import { requireProjectFromApiKey, requireUserUuid } from "#/server/auth";
 import { loadWishesForProject } from "#/server/db";
 import { enforceSdkRateLimit } from "#/server/rate-limit";
 import { requireRequestContext } from "#/server/route-context";
@@ -19,17 +19,26 @@ export const Route = createFileRoute("/api/wish/list")({
           return projectResult.response;
         }
 
+        const userResult = requireUserUuid(request, "sdk");
+        if (!userResult.ok) {
+          return userResult.response;
+        }
+
         const limit = await enforceSdkRateLimit({
           env: requestContext.env,
           apiKey: projectResult.project.api_key,
-          userUuid: request.headers.get("x-wishkit-uuid") ?? "anon",
+          userUuid: userResult.uuid,
           kind: "read",
         });
         if (!limit.ok) {
           return limit.response;
         }
 
-        const response = await loadWishesForProject(requestContext.env.DB, projectResult.project);
+        const response = await loadWishesForProject(
+          requestContext.env.DB,
+          projectResult.project,
+          userResult.uuid,
+        );
         return Response.json(response);
       },
     },

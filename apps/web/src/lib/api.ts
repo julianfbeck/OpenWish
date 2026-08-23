@@ -248,6 +248,16 @@ export async function fetchPasskeyAvailability() {
   return request<PasskeyAvailabilityResponse>("/api/auth/passkey/summary");
 }
 
+export type McpAccess = {
+  endpoint: string;
+  token: string;
+  authorization: "Bearer";
+};
+
+export async function fetchMcpAccess() {
+  return request<McpAccess>("/api/auth/mcp");
+}
+
 export async function fetchPasskeyList() {
   return request<PasskeyListResponse>("/api/auth/passkey/");
 }
@@ -322,4 +332,3 @@ export async function submitPublicFeedback(
     },
   );
 }
-

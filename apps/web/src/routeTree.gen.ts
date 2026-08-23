@@ -9,64 +9,64 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as HealthRouteImport } from './routes/health'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as FeedbackSlugRouteImport } from './routes/feedback.$slug'
-import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projects'
-import { Route as DashboardSlugRouteImport } from './routes/dashboard.$slug'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminSlugRouteImport } from './routes/admin.$slug'
-import { Route as DashboardSlugIndexRouteImport } from './routes/dashboard.$slug.index'
-import { Route as DashboardSlugSettingsRouteImport } from './routes/dashboard.$slug.settings'
-import { Route as DashboardSlugBugsRouteImport } from './routes/dashboard.$slug.bugs'
-import { Route as DashboardSlugAnalyticsRouteImport } from './routes/dashboard.$slug.analytics'
-import { Route as ApiWishVoteRouteImport } from './routes/api/wish/vote'
-import { Route as ApiWishListRouteImport } from './routes/api/wish/list'
-import { Route as ApiWishCreateRouteImport } from './routes/api/wish/create'
-import { Route as ApiV1ProjectsRouteImport } from './routes/api/v1/projects'
-import { Route as ApiUserUpdateRouteImport } from './routes/api/user/update'
-import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
-import { Route as ApiCommentCreateRouteImport } from './routes/api/comment/create'
-import { Route as ApiBugScreenshotRouteImport } from './routes/api/bug/screenshot'
-import { Route as ApiBugListRouteImport } from './routes/api/bug/list'
-import { Route as ApiBugCreateRouteImport } from './routes/api/bug/create'
-import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
-import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
-import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
+import { Route as DashboardSlugRouteImport } from './routes/dashboard.$slug'
+import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projects'
+import { Route as FeedbackSlugRouteImport } from './routes/feedback.$slug'
 import { Route as ApiAdminProjectsRouteImport } from './routes/api/admin/projects'
-import { Route as ApiAuthPasskeyIndexRouteImport } from './routes/api/auth/passkey/index'
-import { Route as ApiPublicProjectsSlugRouteImport } from './routes/api/public/projects/$slug'
-import { Route as ApiPublicFeedbackSlugRouteImport } from './routes/api/public/feedback/$slug'
-import { Route as ApiAuthPasskeySummaryRouteImport } from './routes/api/auth/passkey/summary'
-import { Route as ApiAuthPasskeyCredentialIdRouteImport } from './routes/api/auth/passkey/$credentialId'
-import { Route as ApiAdminProjectsBootstrapRouteImport } from './routes/api/admin/projects/bootstrap'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthMcpRouteImport } from './routes/api/auth/mcp'
+import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiBugCreateRouteImport } from './routes/api/bug/create'
+import { Route as ApiBugListRouteImport } from './routes/api/bug/list'
+import { Route as ApiBugScreenshotRouteImport } from './routes/api/bug/screenshot'
+import { Route as ApiCommentCreateRouteImport } from './routes/api/comment/create'
+import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
+import { Route as ApiUserUpdateRouteImport } from './routes/api/user/update'
+import { Route as ApiV1ProjectsRouteImport } from './routes/api/v1/projects'
+import { Route as ApiV2AttachmentsRouteImport } from './routes/api/v2/attachments'
+import { Route as ApiV2FeaturesRouteImport } from './routes/api/v2/features'
+import { Route as ApiV2IssuesRouteImport } from './routes/api/v2/issues'
+import { Route as ApiWishCreateRouteImport } from './routes/api/wish/create'
+import { Route as ApiWishListRouteImport } from './routes/api/wish/list'
+import { Route as ApiWishVoteRouteImport } from './routes/api/wish/vote'
+import { Route as DashboardSlugIndexRouteImport } from './routes/dashboard.$slug.index'
+import { Route as DashboardSlugAnalyticsRouteImport } from './routes/dashboard.$slug.analytics'
+import { Route as DashboardSlugBugsRouteImport } from './routes/dashboard.$slug.bugs'
+import { Route as DashboardSlugSettingsRouteImport } from './routes/dashboard.$slug.settings'
 import { Route as ApiAdminProjectsSlugRouteImport } from './routes/api/admin/projects/$slug'
-import { Route as ApiV1ProjectsSlugWishesRouteImport } from './routes/api/v1/projects/$slug/wishes'
-import { Route as ApiV1ProjectsSlugBugsRouteImport } from './routes/api/v1/projects/$slug/bugs'
-import { Route as ApiAuthPasskeyRegisterVerifyRouteImport } from './routes/api/auth/passkey/register/verify'
-import { Route as ApiAuthPasskeyRegisterOptionsRouteImport } from './routes/api/auth/passkey/register/options'
-import { Route as ApiAuthPasskeyLoginVerifyRouteImport } from './routes/api/auth/passkey/login/verify'
-import { Route as ApiAuthPasskeyLoginOptionsRouteImport } from './routes/api/auth/passkey/login/options'
-import { Route as ApiAdminProjectsSlugTestEmailRouteImport } from './routes/api/admin/projects/$slug/test-email'
-import { Route as ApiAdminProjectsSlugSettingsRouteImport } from './routes/api/admin/projects/$slug/settings'
-import { Route as ApiAdminProjectsSlugBugsRouteImport } from './routes/api/admin/projects/$slug/bugs'
+import { Route as ApiAdminProjectsBootstrapRouteImport } from './routes/api/admin/projects/bootstrap'
+import { Route as ApiAuthPasskeyIndexRouteImport } from './routes/api/auth/passkey/index'
+import { Route as ApiAuthPasskeyCredentialIdRouteImport } from './routes/api/auth/passkey/$credentialId'
+import { Route as ApiAuthPasskeySummaryRouteImport } from './routes/api/auth/passkey/summary'
+import { Route as ApiPublicFeedbackSlugRouteImport } from './routes/api/public/feedback/$slug'
+import { Route as ApiPublicProjectsSlugRouteImport } from './routes/api/public/projects/$slug'
 import { Route as ApiAdminProjectsSlugAnalyticsRouteImport } from './routes/api/admin/projects/$slug/analytics'
-import { Route as ApiAdminProjectsSlugWishesWishIdRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId'
+import { Route as ApiAdminProjectsSlugBugsRouteImport } from './routes/api/admin/projects/$slug/bugs'
+import { Route as ApiAdminProjectsSlugSettingsRouteImport } from './routes/api/admin/projects/$slug/settings'
+import { Route as ApiAdminProjectsSlugTestEmailRouteImport } from './routes/api/admin/projects/$slug/test-email'
+import { Route as ApiAuthPasskeyLoginOptionsRouteImport } from './routes/api/auth/passkey/login/options'
+import { Route as ApiAuthPasskeyLoginVerifyRouteImport } from './routes/api/auth/passkey/login/verify'
+import { Route as ApiAuthPasskeyRegisterOptionsRouteImport } from './routes/api/auth/passkey/register/options'
+import { Route as ApiAuthPasskeyRegisterVerifyRouteImport } from './routes/api/auth/passkey/register/verify'
+import { Route as ApiV1ProjectsSlugBugsRouteImport } from './routes/api/v1/projects/$slug/bugs'
+import { Route as ApiV1ProjectsSlugWishesRouteImport } from './routes/api/v1/projects/$slug/wishes'
 import { Route as ApiAdminProjectsSlugBugsBugIdRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId'
-import { Route as ApiAdminProjectsSlugWishesWishIdMergeRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId/merge'
-import { Route as ApiAdminProjectsSlugWishesWishIdCommentsRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId/comments'
+import { Route as ApiAdminProjectsSlugWishesWishIdRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId'
 import { Route as ApiAdminProjectsSlugBugsBugIdCommentsRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId/comments'
+import { Route as ApiAdminProjectsSlugWishesWishIdCommentsRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId/comments'
+import { Route as ApiAdminProjectsSlugWishesWishIdMergeRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId/merge'
+import { Route as ApiV2ProjectsSlugIssuesIssueIdNotesRouteImport } from './routes/api/v2/projects/$slug/issues/$issueId/notes'
 import { Route as ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId/screenshots/$key'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -74,114 +74,34 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FeedbackSlugRoute = FeedbackSlugRouteImport.update({
-  id: '/feedback/$slug',
-  path: '/feedback/$slug',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardProjectsRoute = DashboardProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardSlugRoute = DashboardSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => DashboardRoute,
 } as any)
 const AdminSlugRoute = AdminSlugRouteImport.update({
   id: '/admin/$slug',
   path: '/admin/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardSlugIndexRoute = DashboardSlugIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DashboardSlugRoute,
+const DashboardSlugRoute = DashboardSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardSlugSettingsRoute = DashboardSlugSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => DashboardSlugRoute,
+const DashboardProjectsRoute = DashboardProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardSlugBugsRoute = DashboardSlugBugsRouteImport.update({
-  id: '/bugs',
-  path: '/bugs',
-  getParentRoute: () => DashboardSlugRoute,
-} as any)
-const DashboardSlugAnalyticsRoute = DashboardSlugAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => DashboardSlugRoute,
-} as any)
-const ApiWishVoteRoute = ApiWishVoteRouteImport.update({
-  id: '/api/wish/vote',
-  path: '/api/wish/vote',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWishListRoute = ApiWishListRouteImport.update({
-  id: '/api/wish/list',
-  path: '/api/wish/list',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWishCreateRoute = ApiWishCreateRouteImport.update({
-  id: '/api/wish/create',
-  path: '/api/wish/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1ProjectsRoute = ApiV1ProjectsRouteImport.update({
-  id: '/api/v1/projects',
-  path: '/api/v1/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiUserUpdateRoute = ApiUserUpdateRouteImport.update({
-  id: '/api/user/update',
-  path: '/api/user/update',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
-  id: '/api/public/unsubscribe',
-  path: '/api/public/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCommentCreateRoute = ApiCommentCreateRouteImport.update({
-  id: '/api/comment/create',
-  path: '/api/comment/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBugScreenshotRoute = ApiBugScreenshotRouteImport.update({
-  id: '/api/bug/screenshot',
-  path: '/api/bug/screenshot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBugListRoute = ApiBugListRouteImport.update({
-  id: '/api/bug/list',
-  path: '/api/bug/list',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBugCreateRoute = ApiBugCreateRouteImport.update({
-  id: '/api/bug/create',
-  path: '/api/bug/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
-  id: '/api/auth/session',
-  path: '/api/auth/session',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
-  id: '/api/auth/logout',
-  path: '/api/auth/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
-  id: '/api/auth/login',
-  path: '/api/auth/login',
+const FeedbackSlugRoute = FeedbackSlugRouteImport.update({
+  id: '/feedback/$slug',
+  path: '/feedback/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminProjectsRoute = ApiAdminProjectsRouteImport.update({
@@ -189,24 +109,125 @@ const ApiAdminProjectsRoute = ApiAdminProjectsRouteImport.update({
   path: '/api/admin/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthMcpRoute = ApiAuthMcpRouteImport.update({
+  id: '/api/auth/mcp',
+  path: '/api/auth/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
+  id: '/api/auth/session',
+  path: '/api/auth/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBugCreateRoute = ApiBugCreateRouteImport.update({
+  id: '/api/bug/create',
+  path: '/api/bug/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBugListRoute = ApiBugListRouteImport.update({
+  id: '/api/bug/list',
+  path: '/api/bug/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBugScreenshotRoute = ApiBugScreenshotRouteImport.update({
+  id: '/api/bug/screenshot',
+  path: '/api/bug/screenshot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCommentCreateRoute = ApiCommentCreateRouteImport.update({
+  id: '/api/comment/create',
+  path: '/api/comment/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
+  id: '/api/public/unsubscribe',
+  path: '/api/public/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUserUpdateRoute = ApiUserUpdateRouteImport.update({
+  id: '/api/user/update',
+  path: '/api/user/update',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1ProjectsRoute = ApiV1ProjectsRouteImport.update({
+  id: '/api/v1/projects',
+  path: '/api/v1/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2AttachmentsRoute = ApiV2AttachmentsRouteImport.update({
+  id: '/api/v2/attachments',
+  path: '/api/v2/attachments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2FeaturesRoute = ApiV2FeaturesRouteImport.update({
+  id: '/api/v2/features',
+  path: '/api/v2/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2IssuesRoute = ApiV2IssuesRouteImport.update({
+  id: '/api/v2/issues',
+  path: '/api/v2/issues',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWishCreateRoute = ApiWishCreateRouteImport.update({
+  id: '/api/wish/create',
+  path: '/api/wish/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWishListRoute = ApiWishListRouteImport.update({
+  id: '/api/wish/list',
+  path: '/api/wish/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWishVoteRoute = ApiWishVoteRouteImport.update({
+  id: '/api/wish/vote',
+  path: '/api/wish/vote',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardSlugIndexRoute = DashboardSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardSlugRoute,
+} as any)
+const DashboardSlugAnalyticsRoute = DashboardSlugAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => DashboardSlugRoute,
+} as any)
+const DashboardSlugBugsRoute = DashboardSlugBugsRouteImport.update({
+  id: '/bugs',
+  path: '/bugs',
+  getParentRoute: () => DashboardSlugRoute,
+} as any)
+const DashboardSlugSettingsRoute = DashboardSlugSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardSlugRoute,
+} as any)
+const ApiAdminProjectsSlugRoute = ApiAdminProjectsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ApiAdminProjectsRoute,
+} as any)
+const ApiAdminProjectsBootstrapRoute =
+  ApiAdminProjectsBootstrapRouteImport.update({
+    id: '/bootstrap',
+    path: '/bootstrap',
+    getParentRoute: () => ApiAdminProjectsRoute,
+  } as any)
 const ApiAuthPasskeyIndexRoute = ApiAuthPasskeyIndexRouteImport.update({
   id: '/api/auth/passkey/',
   path: '/api/auth/passkey/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicProjectsSlugRoute = ApiPublicProjectsSlugRouteImport.update({
-  id: '/api/public/projects/$slug',
-  path: '/api/public/projects/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicFeedbackSlugRoute = ApiPublicFeedbackSlugRouteImport.update({
-  id: '/api/public/feedback/$slug',
-  path: '/api/public/feedback/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthPasskeySummaryRoute = ApiAuthPasskeySummaryRouteImport.update({
-  id: '/api/auth/passkey/summary',
-  path: '/api/auth/passkey/summary',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthPasskeyCredentialIdRoute =
@@ -215,61 +236,25 @@ const ApiAuthPasskeyCredentialIdRoute =
     path: '/api/auth/passkey/$credentialId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiAdminProjectsBootstrapRoute =
-  ApiAdminProjectsBootstrapRouteImport.update({
-    id: '/bootstrap',
-    path: '/bootstrap',
-    getParentRoute: () => ApiAdminProjectsRoute,
-  } as any)
-const ApiAdminProjectsSlugRoute = ApiAdminProjectsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ApiAdminProjectsRoute,
+const ApiAuthPasskeySummaryRoute = ApiAuthPasskeySummaryRouteImport.update({
+  id: '/api/auth/passkey/summary',
+  path: '/api/auth/passkey/summary',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1ProjectsSlugWishesRoute = ApiV1ProjectsSlugWishesRouteImport.update({
-  id: '/$slug/wishes',
-  path: '/$slug/wishes',
-  getParentRoute: () => ApiV1ProjectsRoute,
+const ApiPublicFeedbackSlugRoute = ApiPublicFeedbackSlugRouteImport.update({
+  id: '/api/public/feedback/$slug',
+  path: '/api/public/feedback/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1ProjectsSlugBugsRoute = ApiV1ProjectsSlugBugsRouteImport.update({
-  id: '/$slug/bugs',
-  path: '/$slug/bugs',
-  getParentRoute: () => ApiV1ProjectsRoute,
+const ApiPublicProjectsSlugRoute = ApiPublicProjectsSlugRouteImport.update({
+  id: '/api/public/projects/$slug',
+  path: '/api/public/projects/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthPasskeyRegisterVerifyRoute =
-  ApiAuthPasskeyRegisterVerifyRouteImport.update({
-    id: '/api/auth/passkey/register/verify',
-    path: '/api/auth/passkey/register/verify',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthPasskeyRegisterOptionsRoute =
-  ApiAuthPasskeyRegisterOptionsRouteImport.update({
-    id: '/api/auth/passkey/register/options',
-    path: '/api/auth/passkey/register/options',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthPasskeyLoginVerifyRoute =
-  ApiAuthPasskeyLoginVerifyRouteImport.update({
-    id: '/api/auth/passkey/login/verify',
-    path: '/api/auth/passkey/login/verify',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthPasskeyLoginOptionsRoute =
-  ApiAuthPasskeyLoginOptionsRouteImport.update({
-    id: '/api/auth/passkey/login/options',
-    path: '/api/auth/passkey/login/options',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAdminProjectsSlugTestEmailRoute =
-  ApiAdminProjectsSlugTestEmailRouteImport.update({
-    id: '/test-email',
-    path: '/test-email',
-    getParentRoute: () => ApiAdminProjectsSlugRoute,
-  } as any)
-const ApiAdminProjectsSlugSettingsRoute =
-  ApiAdminProjectsSlugSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
+const ApiAdminProjectsSlugAnalyticsRoute =
+  ApiAdminProjectsSlugAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
     getParentRoute: () => ApiAdminProjectsSlugRoute,
   } as any)
 const ApiAdminProjectsSlugBugsRoute =
@@ -278,11 +263,57 @@ const ApiAdminProjectsSlugBugsRoute =
     path: '/bugs',
     getParentRoute: () => ApiAdminProjectsSlugRoute,
   } as any)
-const ApiAdminProjectsSlugAnalyticsRoute =
-  ApiAdminProjectsSlugAnalyticsRouteImport.update({
-    id: '/analytics',
-    path: '/analytics',
+const ApiAdminProjectsSlugSettingsRoute =
+  ApiAdminProjectsSlugSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => ApiAdminProjectsSlugRoute,
+  } as any)
+const ApiAdminProjectsSlugTestEmailRoute =
+  ApiAdminProjectsSlugTestEmailRouteImport.update({
+    id: '/test-email',
+    path: '/test-email',
+    getParentRoute: () => ApiAdminProjectsSlugRoute,
+  } as any)
+const ApiAuthPasskeyLoginOptionsRoute =
+  ApiAuthPasskeyLoginOptionsRouteImport.update({
+    id: '/api/auth/passkey/login/options',
+    path: '/api/auth/passkey/login/options',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasskeyLoginVerifyRoute =
+  ApiAuthPasskeyLoginVerifyRouteImport.update({
+    id: '/api/auth/passkey/login/verify',
+    path: '/api/auth/passkey/login/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasskeyRegisterOptionsRoute =
+  ApiAuthPasskeyRegisterOptionsRouteImport.update({
+    id: '/api/auth/passkey/register/options',
+    path: '/api/auth/passkey/register/options',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasskeyRegisterVerifyRoute =
+  ApiAuthPasskeyRegisterVerifyRouteImport.update({
+    id: '/api/auth/passkey/register/verify',
+    path: '/api/auth/passkey/register/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1ProjectsSlugBugsRoute = ApiV1ProjectsSlugBugsRouteImport.update({
+  id: '/$slug/bugs',
+  path: '/$slug/bugs',
+  getParentRoute: () => ApiV1ProjectsRoute,
+} as any)
+const ApiV1ProjectsSlugWishesRoute = ApiV1ProjectsSlugWishesRouteImport.update({
+  id: '/$slug/wishes',
+  path: '/$slug/wishes',
+  getParentRoute: () => ApiV1ProjectsRoute,
+} as any)
+const ApiAdminProjectsSlugBugsBugIdRoute =
+  ApiAdminProjectsSlugBugsBugIdRouteImport.update({
+    id: '/$bugId',
+    path: '/$bugId',
+    getParentRoute: () => ApiAdminProjectsSlugBugsRoute,
   } as any)
 const ApiAdminProjectsSlugWishesWishIdRoute =
   ApiAdminProjectsSlugWishesWishIdRouteImport.update({
@@ -290,17 +321,11 @@ const ApiAdminProjectsSlugWishesWishIdRoute =
     path: '/wishes/$wishId',
     getParentRoute: () => ApiAdminProjectsSlugRoute,
   } as any)
-const ApiAdminProjectsSlugBugsBugIdRoute =
-  ApiAdminProjectsSlugBugsBugIdRouteImport.update({
-    id: '/$bugId',
-    path: '/$bugId',
-    getParentRoute: () => ApiAdminProjectsSlugBugsRoute,
-  } as any)
-const ApiAdminProjectsSlugWishesWishIdMergeRoute =
-  ApiAdminProjectsSlugWishesWishIdMergeRouteImport.update({
-    id: '/merge',
-    path: '/merge',
-    getParentRoute: () => ApiAdminProjectsSlugWishesWishIdRoute,
+const ApiAdminProjectsSlugBugsBugIdCommentsRoute =
+  ApiAdminProjectsSlugBugsBugIdCommentsRouteImport.update({
+    id: '/comments',
+    path: '/comments',
+    getParentRoute: () => ApiAdminProjectsSlugBugsBugIdRoute,
   } as any)
 const ApiAdminProjectsSlugWishesWishIdCommentsRoute =
   ApiAdminProjectsSlugWishesWishIdCommentsRouteImport.update({
@@ -308,11 +333,17 @@ const ApiAdminProjectsSlugWishesWishIdCommentsRoute =
     path: '/comments',
     getParentRoute: () => ApiAdminProjectsSlugWishesWishIdRoute,
   } as any)
-const ApiAdminProjectsSlugBugsBugIdCommentsRoute =
-  ApiAdminProjectsSlugBugsBugIdCommentsRouteImport.update({
-    id: '/comments',
-    path: '/comments',
-    getParentRoute: () => ApiAdminProjectsSlugBugsBugIdRoute,
+const ApiAdminProjectsSlugWishesWishIdMergeRoute =
+  ApiAdminProjectsSlugWishesWishIdMergeRouteImport.update({
+    id: '/merge',
+    path: '/merge',
+    getParentRoute: () => ApiAdminProjectsSlugWishesWishIdRoute,
+  } as any)
+const ApiV2ProjectsSlugIssuesIssueIdNotesRoute =
+  ApiV2ProjectsSlugIssuesIssueIdNotesRouteImport.update({
+    id: '/api/v2/projects/$slug/issues/$issueId/notes',
+    path: '/api/v2/projects/$slug/issues/$issueId/notes',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute =
   ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRouteImport.update({
@@ -333,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/mcp': typeof ApiAuthMcpRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bug/create': typeof ApiBugCreateRoute
   '/api/bug/list': typeof ApiBugListRoute
@@ -341,6 +373,9 @@ export interface FileRoutesByFullPath {
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
   '/api/v1/projects': typeof ApiV1ProjectsRouteWithChildren
+  '/api/v2/attachments': typeof ApiV2AttachmentsRoute
+  '/api/v2/features': typeof ApiV2FeaturesRoute
+  '/api/v2/issues': typeof ApiV2IssuesRoute
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
@@ -370,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/comments': typeof ApiAdminProjectsSlugWishesWishIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/merge': typeof ApiAdminProjectsSlugWishesWishIdMergeRoute
+  '/api/v2/projects/$slug/issues/$issueId/notes': typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
   '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key': typeof ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute
 }
 export interface FileRoutesByTo {
@@ -383,6 +419,7 @@ export interface FileRoutesByTo {
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/mcp': typeof ApiAuthMcpRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bug/create': typeof ApiBugCreateRoute
   '/api/bug/list': typeof ApiBugListRoute
@@ -391,6 +428,9 @@ export interface FileRoutesByTo {
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
   '/api/v1/projects': typeof ApiV1ProjectsRouteWithChildren
+  '/api/v2/attachments': typeof ApiV2AttachmentsRoute
+  '/api/v2/features': typeof ApiV2FeaturesRoute
+  '/api/v2/issues': typeof ApiV2IssuesRoute
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
@@ -420,6 +460,7 @@ export interface FileRoutesByTo {
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/comments': typeof ApiAdminProjectsSlugWishesWishIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/merge': typeof ApiAdminProjectsSlugWishesWishIdMergeRoute
+  '/api/v2/projects/$slug/issues/$issueId/notes': typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
   '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key': typeof ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute
 }
 export interface FileRoutesById {
@@ -435,6 +476,7 @@ export interface FileRoutesById {
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/mcp': typeof ApiAuthMcpRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/bug/create': typeof ApiBugCreateRoute
   '/api/bug/list': typeof ApiBugListRoute
@@ -443,6 +485,9 @@ export interface FileRoutesById {
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/user/update': typeof ApiUserUpdateRoute
   '/api/v1/projects': typeof ApiV1ProjectsRouteWithChildren
+  '/api/v2/attachments': typeof ApiV2AttachmentsRoute
+  '/api/v2/features': typeof ApiV2FeaturesRoute
+  '/api/v2/issues': typeof ApiV2IssuesRoute
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
@@ -472,6 +517,7 @@ export interface FileRoutesById {
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/comments': typeof ApiAdminProjectsSlugWishesWishIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/merge': typeof ApiAdminProjectsSlugWishesWishIdMergeRoute
+  '/api/v2/projects/$slug/issues/$issueId/notes': typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
   '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key': typeof ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute
 }
 export interface FileRouteTypes {
@@ -488,6 +534,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/mcp'
     | '/api/auth/session'
     | '/api/bug/create'
     | '/api/bug/list'
@@ -496,6 +543,9 @@ export interface FileRouteTypes {
     | '/api/public/unsubscribe'
     | '/api/user/update'
     | '/api/v1/projects'
+    | '/api/v2/attachments'
+    | '/api/v2/features'
+    | '/api/v2/issues'
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
@@ -525,6 +575,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/merge'
+    | '/api/v2/projects/$slug/issues/$issueId/notes'
     | '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -538,6 +589,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/mcp'
     | '/api/auth/session'
     | '/api/bug/create'
     | '/api/bug/list'
@@ -546,6 +598,9 @@ export interface FileRouteTypes {
     | '/api/public/unsubscribe'
     | '/api/user/update'
     | '/api/v1/projects'
+    | '/api/v2/attachments'
+    | '/api/v2/features'
+    | '/api/v2/issues'
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
@@ -575,6 +630,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/merge'
+    | '/api/v2/projects/$slug/issues/$issueId/notes'
     | '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key'
   id:
     | '__root__'
@@ -589,6 +645,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/mcp'
     | '/api/auth/session'
     | '/api/bug/create'
     | '/api/bug/list'
@@ -597,6 +654,9 @@ export interface FileRouteTypes {
     | '/api/public/unsubscribe'
     | '/api/user/update'
     | '/api/v1/projects'
+    | '/api/v2/attachments'
+    | '/api/v2/features'
+    | '/api/v2/issues'
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
@@ -626,6 +686,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/merge'
+    | '/api/v2/projects/$slug/issues/$issueId/notes'
     | '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key'
   fileRoutesById: FileRoutesById
 }
@@ -639,6 +700,7 @@ export interface RootRouteChildren {
   ApiAdminProjectsRoute: typeof ApiAdminProjectsRouteWithChildren
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthMcpRoute: typeof ApiAuthMcpRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiBugCreateRoute: typeof ApiBugCreateRoute
   ApiBugListRoute: typeof ApiBugListRoute
@@ -647,6 +709,9 @@ export interface RootRouteChildren {
   ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
   ApiUserUpdateRoute: typeof ApiUserUpdateRoute
   ApiV1ProjectsRoute: typeof ApiV1ProjectsRouteWithChildren
+  ApiV2AttachmentsRoute: typeof ApiV2AttachmentsRoute
+  ApiV2FeaturesRoute: typeof ApiV2FeaturesRoute
+  ApiV2IssuesRoute: typeof ApiV2IssuesRoute
   ApiWishCreateRoute: typeof ApiWishCreateRoute
   ApiWishListRoute: typeof ApiWishListRoute
   ApiWishVoteRoute: typeof ApiWishVoteRoute
@@ -659,22 +724,16 @@ export interface RootRouteChildren {
   ApiAuthPasskeyLoginVerifyRoute: typeof ApiAuthPasskeyLoginVerifyRoute
   ApiAuthPasskeyRegisterOptionsRoute: typeof ApiAuthPasskeyRegisterOptionsRoute
   ApiAuthPasskeyRegisterVerifyRoute: typeof ApiAuthPasskeyRegisterVerifyRoute
+  ApiV2ProjectsSlugIssuesIssueIdNotesRoute: typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -684,33 +743,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/feedback/$slug': {
-      id: '/feedback/$slug'
-      path: '/feedback/$slug'
-      fullPath: '/feedback/$slug'
-      preLoaderRoute: typeof FeedbackSlugRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/projects': {
-      id: '/dashboard/projects'
-      path: '/projects'
-      fullPath: '/dashboard/projects'
-      preLoaderRoute: typeof DashboardProjectsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/$slug': {
-      id: '/dashboard/$slug'
-      path: '/$slug'
-      fullPath: '/dashboard/$slug'
-      preLoaderRoute: typeof DashboardSlugRouteImport
-      parentRoute: typeof DashboardRoute
     }
     '/admin/$slug': {
       id: '/admin/$slug'
@@ -719,123 +764,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/$slug/': {
-      id: '/dashboard/$slug/'
-      path: '/'
-      fullPath: '/dashboard/$slug/'
-      preLoaderRoute: typeof DashboardSlugIndexRouteImport
-      parentRoute: typeof DashboardSlugRoute
+    '/dashboard/$slug': {
+      id: '/dashboard/$slug'
+      path: '/$slug'
+      fullPath: '/dashboard/$slug'
+      preLoaderRoute: typeof DashboardSlugRouteImport
+      parentRoute: typeof DashboardRoute
     }
-    '/dashboard/$slug/settings': {
-      id: '/dashboard/$slug/settings'
-      path: '/settings'
-      fullPath: '/dashboard/$slug/settings'
-      preLoaderRoute: typeof DashboardSlugSettingsRouteImport
-      parentRoute: typeof DashboardSlugRoute
+    '/dashboard/projects': {
+      id: '/dashboard/projects'
+      path: '/projects'
+      fullPath: '/dashboard/projects'
+      preLoaderRoute: typeof DashboardProjectsRouteImport
+      parentRoute: typeof DashboardRoute
     }
-    '/dashboard/$slug/bugs': {
-      id: '/dashboard/$slug/bugs'
-      path: '/bugs'
-      fullPath: '/dashboard/$slug/bugs'
-      preLoaderRoute: typeof DashboardSlugBugsRouteImport
-      parentRoute: typeof DashboardSlugRoute
-    }
-    '/dashboard/$slug/analytics': {
-      id: '/dashboard/$slug/analytics'
-      path: '/analytics'
-      fullPath: '/dashboard/$slug/analytics'
-      preLoaderRoute: typeof DashboardSlugAnalyticsRouteImport
-      parentRoute: typeof DashboardSlugRoute
-    }
-    '/api/wish/vote': {
-      id: '/api/wish/vote'
-      path: '/api/wish/vote'
-      fullPath: '/api/wish/vote'
-      preLoaderRoute: typeof ApiWishVoteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/wish/list': {
-      id: '/api/wish/list'
-      path: '/api/wish/list'
-      fullPath: '/api/wish/list'
-      preLoaderRoute: typeof ApiWishListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/wish/create': {
-      id: '/api/wish/create'
-      path: '/api/wish/create'
-      fullPath: '/api/wish/create'
-      preLoaderRoute: typeof ApiWishCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/projects': {
-      id: '/api/v1/projects'
-      path: '/api/v1/projects'
-      fullPath: '/api/v1/projects'
-      preLoaderRoute: typeof ApiV1ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/user/update': {
-      id: '/api/user/update'
-      path: '/api/user/update'
-      fullPath: '/api/user/update'
-      preLoaderRoute: typeof ApiUserUpdateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/unsubscribe': {
-      id: '/api/public/unsubscribe'
-      path: '/api/public/unsubscribe'
-      fullPath: '/api/public/unsubscribe'
-      preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/comment/create': {
-      id: '/api/comment/create'
-      path: '/api/comment/create'
-      fullPath: '/api/comment/create'
-      preLoaderRoute: typeof ApiCommentCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/bug/screenshot': {
-      id: '/api/bug/screenshot'
-      path: '/api/bug/screenshot'
-      fullPath: '/api/bug/screenshot'
-      preLoaderRoute: typeof ApiBugScreenshotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/bug/list': {
-      id: '/api/bug/list'
-      path: '/api/bug/list'
-      fullPath: '/api/bug/list'
-      preLoaderRoute: typeof ApiBugListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/bug/create': {
-      id: '/api/bug/create'
-      path: '/api/bug/create'
-      fullPath: '/api/bug/create'
-      preLoaderRoute: typeof ApiBugCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/session': {
-      id: '/api/auth/session'
-      path: '/api/auth/session'
-      fullPath: '/api/auth/session'
-      preLoaderRoute: typeof ApiAuthSessionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/logout': {
-      id: '/api/auth/logout'
-      path: '/api/auth/logout'
-      fullPath: '/api/auth/logout'
-      preLoaderRoute: typeof ApiAuthLogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/login': {
-      id: '/api/auth/login'
-      path: '/api/auth/login'
-      fullPath: '/api/auth/login'
-      preLoaderRoute: typeof ApiAuthLoginRouteImport
+    '/feedback/$slug': {
+      id: '/feedback/$slug'
+      path: '/feedback/$slug'
+      fullPath: '/feedback/$slug'
+      preLoaderRoute: typeof FeedbackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/projects': {
@@ -845,32 +792,172 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/mcp': {
+      id: '/api/auth/mcp'
+      path: '/api/auth/mcp'
+      fullPath: '/api/auth/mcp'
+      preLoaderRoute: typeof ApiAuthMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/session': {
+      id: '/api/auth/session'
+      path: '/api/auth/session'
+      fullPath: '/api/auth/session'
+      preLoaderRoute: typeof ApiAuthSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bug/create': {
+      id: '/api/bug/create'
+      path: '/api/bug/create'
+      fullPath: '/api/bug/create'
+      preLoaderRoute: typeof ApiBugCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bug/list': {
+      id: '/api/bug/list'
+      path: '/api/bug/list'
+      fullPath: '/api/bug/list'
+      preLoaderRoute: typeof ApiBugListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bug/screenshot': {
+      id: '/api/bug/screenshot'
+      path: '/api/bug/screenshot'
+      fullPath: '/api/bug/screenshot'
+      preLoaderRoute: typeof ApiBugScreenshotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/comment/create': {
+      id: '/api/comment/create'
+      path: '/api/comment/create'
+      fullPath: '/api/comment/create'
+      preLoaderRoute: typeof ApiCommentCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/unsubscribe': {
+      id: '/api/public/unsubscribe'
+      path: '/api/public/unsubscribe'
+      fullPath: '/api/public/unsubscribe'
+      preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user/update': {
+      id: '/api/user/update'
+      path: '/api/user/update'
+      fullPath: '/api/user/update'
+      preLoaderRoute: typeof ApiUserUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/projects': {
+      id: '/api/v1/projects'
+      path: '/api/v1/projects'
+      fullPath: '/api/v1/projects'
+      preLoaderRoute: typeof ApiV1ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/attachments': {
+      id: '/api/v2/attachments'
+      path: '/api/v2/attachments'
+      fullPath: '/api/v2/attachments'
+      preLoaderRoute: typeof ApiV2AttachmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/features': {
+      id: '/api/v2/features'
+      path: '/api/v2/features'
+      fullPath: '/api/v2/features'
+      preLoaderRoute: typeof ApiV2FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/issues': {
+      id: '/api/v2/issues'
+      path: '/api/v2/issues'
+      fullPath: '/api/v2/issues'
+      preLoaderRoute: typeof ApiV2IssuesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/wish/create': {
+      id: '/api/wish/create'
+      path: '/api/wish/create'
+      fullPath: '/api/wish/create'
+      preLoaderRoute: typeof ApiWishCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/wish/list': {
+      id: '/api/wish/list'
+      path: '/api/wish/list'
+      fullPath: '/api/wish/list'
+      preLoaderRoute: typeof ApiWishListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/wish/vote': {
+      id: '/api/wish/vote'
+      path: '/api/wish/vote'
+      fullPath: '/api/wish/vote'
+      preLoaderRoute: typeof ApiWishVoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/$slug/': {
+      id: '/dashboard/$slug/'
+      path: '/'
+      fullPath: '/dashboard/$slug/'
+      preLoaderRoute: typeof DashboardSlugIndexRouteImport
+      parentRoute: typeof DashboardSlugRoute
+    }
+    '/dashboard/$slug/analytics': {
+      id: '/dashboard/$slug/analytics'
+      path: '/analytics'
+      fullPath: '/dashboard/$slug/analytics'
+      preLoaderRoute: typeof DashboardSlugAnalyticsRouteImport
+      parentRoute: typeof DashboardSlugRoute
+    }
+    '/dashboard/$slug/bugs': {
+      id: '/dashboard/$slug/bugs'
+      path: '/bugs'
+      fullPath: '/dashboard/$slug/bugs'
+      preLoaderRoute: typeof DashboardSlugBugsRouteImport
+      parentRoute: typeof DashboardSlugRoute
+    }
+    '/dashboard/$slug/settings': {
+      id: '/dashboard/$slug/settings'
+      path: '/settings'
+      fullPath: '/dashboard/$slug/settings'
+      preLoaderRoute: typeof DashboardSlugSettingsRouteImport
+      parentRoute: typeof DashboardSlugRoute
+    }
+    '/api/admin/projects/$slug': {
+      id: '/api/admin/projects/$slug'
+      path: '/$slug'
+      fullPath: '/api/admin/projects/$slug'
+      preLoaderRoute: typeof ApiAdminProjectsSlugRouteImport
+      parentRoute: typeof ApiAdminProjectsRoute
+    }
+    '/api/admin/projects/bootstrap': {
+      id: '/api/admin/projects/bootstrap'
+      path: '/bootstrap'
+      fullPath: '/api/admin/projects/bootstrap'
+      preLoaderRoute: typeof ApiAdminProjectsBootstrapRouteImport
+      parentRoute: typeof ApiAdminProjectsRoute
+    }
     '/api/auth/passkey/': {
       id: '/api/auth/passkey/'
       path: '/api/auth/passkey'
       fullPath: '/api/auth/passkey/'
       preLoaderRoute: typeof ApiAuthPasskeyIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/projects/$slug': {
-      id: '/api/public/projects/$slug'
-      path: '/api/public/projects/$slug'
-      fullPath: '/api/public/projects/$slug'
-      preLoaderRoute: typeof ApiPublicProjectsSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/feedback/$slug': {
-      id: '/api/public/feedback/$slug'
-      path: '/api/public/feedback/$slug'
-      fullPath: '/api/public/feedback/$slug'
-      preLoaderRoute: typeof ApiPublicFeedbackSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/passkey/summary': {
-      id: '/api/auth/passkey/summary'
-      path: '/api/auth/passkey/summary'
-      fullPath: '/api/auth/passkey/summary'
-      preLoaderRoute: typeof ApiAuthPasskeySummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/passkey/$credentialId': {
@@ -880,74 +967,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthPasskeyCredentialIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/projects/bootstrap': {
-      id: '/api/admin/projects/bootstrap'
-      path: '/bootstrap'
-      fullPath: '/api/admin/projects/bootstrap'
-      preLoaderRoute: typeof ApiAdminProjectsBootstrapRouteImport
-      parentRoute: typeof ApiAdminProjectsRoute
-    }
-    '/api/admin/projects/$slug': {
-      id: '/api/admin/projects/$slug'
-      path: '/$slug'
-      fullPath: '/api/admin/projects/$slug'
-      preLoaderRoute: typeof ApiAdminProjectsSlugRouteImport
-      parentRoute: typeof ApiAdminProjectsRoute
-    }
-    '/api/v1/projects/$slug/wishes': {
-      id: '/api/v1/projects/$slug/wishes'
-      path: '/$slug/wishes'
-      fullPath: '/api/v1/projects/$slug/wishes'
-      preLoaderRoute: typeof ApiV1ProjectsSlugWishesRouteImport
-      parentRoute: typeof ApiV1ProjectsRoute
-    }
-    '/api/v1/projects/$slug/bugs': {
-      id: '/api/v1/projects/$slug/bugs'
-      path: '/$slug/bugs'
-      fullPath: '/api/v1/projects/$slug/bugs'
-      preLoaderRoute: typeof ApiV1ProjectsSlugBugsRouteImport
-      parentRoute: typeof ApiV1ProjectsRoute
-    }
-    '/api/auth/passkey/register/verify': {
-      id: '/api/auth/passkey/register/verify'
-      path: '/api/auth/passkey/register/verify'
-      fullPath: '/api/auth/passkey/register/verify'
-      preLoaderRoute: typeof ApiAuthPasskeyRegisterVerifyRouteImport
+    '/api/auth/passkey/summary': {
+      id: '/api/auth/passkey/summary'
+      path: '/api/auth/passkey/summary'
+      fullPath: '/api/auth/passkey/summary'
+      preLoaderRoute: typeof ApiAuthPasskeySummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/passkey/register/options': {
-      id: '/api/auth/passkey/register/options'
-      path: '/api/auth/passkey/register/options'
-      fullPath: '/api/auth/passkey/register/options'
-      preLoaderRoute: typeof ApiAuthPasskeyRegisterOptionsRouteImport
+    '/api/public/feedback/$slug': {
+      id: '/api/public/feedback/$slug'
+      path: '/api/public/feedback/$slug'
+      fullPath: '/api/public/feedback/$slug'
+      preLoaderRoute: typeof ApiPublicFeedbackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/passkey/login/verify': {
-      id: '/api/auth/passkey/login/verify'
-      path: '/api/auth/passkey/login/verify'
-      fullPath: '/api/auth/passkey/login/verify'
-      preLoaderRoute: typeof ApiAuthPasskeyLoginVerifyRouteImport
+    '/api/public/projects/$slug': {
+      id: '/api/public/projects/$slug'
+      path: '/api/public/projects/$slug'
+      fullPath: '/api/public/projects/$slug'
+      preLoaderRoute: typeof ApiPublicProjectsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/passkey/login/options': {
-      id: '/api/auth/passkey/login/options'
-      path: '/api/auth/passkey/login/options'
-      fullPath: '/api/auth/passkey/login/options'
-      preLoaderRoute: typeof ApiAuthPasskeyLoginOptionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/admin/projects/$slug/test-email': {
-      id: '/api/admin/projects/$slug/test-email'
-      path: '/test-email'
-      fullPath: '/api/admin/projects/$slug/test-email'
-      preLoaderRoute: typeof ApiAdminProjectsSlugTestEmailRouteImport
-      parentRoute: typeof ApiAdminProjectsSlugRoute
-    }
-    '/api/admin/projects/$slug/settings': {
-      id: '/api/admin/projects/$slug/settings'
-      path: '/settings'
-      fullPath: '/api/admin/projects/$slug/settings'
-      preLoaderRoute: typeof ApiAdminProjectsSlugSettingsRouteImport
+    '/api/admin/projects/$slug/analytics': {
+      id: '/api/admin/projects/$slug/analytics'
+      path: '/analytics'
+      fullPath: '/api/admin/projects/$slug/analytics'
+      preLoaderRoute: typeof ApiAdminProjectsSlugAnalyticsRouteImport
       parentRoute: typeof ApiAdminProjectsSlugRoute
     }
     '/api/admin/projects/$slug/bugs': {
@@ -957,19 +1002,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminProjectsSlugBugsRouteImport
       parentRoute: typeof ApiAdminProjectsSlugRoute
     }
-    '/api/admin/projects/$slug/analytics': {
-      id: '/api/admin/projects/$slug/analytics'
-      path: '/analytics'
-      fullPath: '/api/admin/projects/$slug/analytics'
-      preLoaderRoute: typeof ApiAdminProjectsSlugAnalyticsRouteImport
+    '/api/admin/projects/$slug/settings': {
+      id: '/api/admin/projects/$slug/settings'
+      path: '/settings'
+      fullPath: '/api/admin/projects/$slug/settings'
+      preLoaderRoute: typeof ApiAdminProjectsSlugSettingsRouteImport
       parentRoute: typeof ApiAdminProjectsSlugRoute
     }
-    '/api/admin/projects/$slug/wishes/$wishId': {
-      id: '/api/admin/projects/$slug/wishes/$wishId'
-      path: '/wishes/$wishId'
-      fullPath: '/api/admin/projects/$slug/wishes/$wishId'
-      preLoaderRoute: typeof ApiAdminProjectsSlugWishesWishIdRouteImport
+    '/api/admin/projects/$slug/test-email': {
+      id: '/api/admin/projects/$slug/test-email'
+      path: '/test-email'
+      fullPath: '/api/admin/projects/$slug/test-email'
+      preLoaderRoute: typeof ApiAdminProjectsSlugTestEmailRouteImport
       parentRoute: typeof ApiAdminProjectsSlugRoute
+    }
+    '/api/auth/passkey/login/options': {
+      id: '/api/auth/passkey/login/options'
+      path: '/api/auth/passkey/login/options'
+      fullPath: '/api/auth/passkey/login/options'
+      preLoaderRoute: typeof ApiAuthPasskeyLoginOptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/passkey/login/verify': {
+      id: '/api/auth/passkey/login/verify'
+      path: '/api/auth/passkey/login/verify'
+      fullPath: '/api/auth/passkey/login/verify'
+      preLoaderRoute: typeof ApiAuthPasskeyLoginVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/passkey/register/options': {
+      id: '/api/auth/passkey/register/options'
+      path: '/api/auth/passkey/register/options'
+      fullPath: '/api/auth/passkey/register/options'
+      preLoaderRoute: typeof ApiAuthPasskeyRegisterOptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/passkey/register/verify': {
+      id: '/api/auth/passkey/register/verify'
+      path: '/api/auth/passkey/register/verify'
+      fullPath: '/api/auth/passkey/register/verify'
+      preLoaderRoute: typeof ApiAuthPasskeyRegisterVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/projects/$slug/bugs': {
+      id: '/api/v1/projects/$slug/bugs'
+      path: '/$slug/bugs'
+      fullPath: '/api/v1/projects/$slug/bugs'
+      preLoaderRoute: typeof ApiV1ProjectsSlugBugsRouteImport
+      parentRoute: typeof ApiV1ProjectsRoute
+    }
+    '/api/v1/projects/$slug/wishes': {
+      id: '/api/v1/projects/$slug/wishes'
+      path: '/$slug/wishes'
+      fullPath: '/api/v1/projects/$slug/wishes'
+      preLoaderRoute: typeof ApiV1ProjectsSlugWishesRouteImport
+      parentRoute: typeof ApiV1ProjectsRoute
     }
     '/api/admin/projects/$slug/bugs/$bugId': {
       id: '/api/admin/projects/$slug/bugs/$bugId'
@@ -978,12 +1065,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminProjectsSlugBugsBugIdRouteImport
       parentRoute: typeof ApiAdminProjectsSlugBugsRoute
     }
-    '/api/admin/projects/$slug/wishes/$wishId/merge': {
-      id: '/api/admin/projects/$slug/wishes/$wishId/merge'
-      path: '/merge'
-      fullPath: '/api/admin/projects/$slug/wishes/$wishId/merge'
-      preLoaderRoute: typeof ApiAdminProjectsSlugWishesWishIdMergeRouteImport
-      parentRoute: typeof ApiAdminProjectsSlugWishesWishIdRoute
+    '/api/admin/projects/$slug/wishes/$wishId': {
+      id: '/api/admin/projects/$slug/wishes/$wishId'
+      path: '/wishes/$wishId'
+      fullPath: '/api/admin/projects/$slug/wishes/$wishId'
+      preLoaderRoute: typeof ApiAdminProjectsSlugWishesWishIdRouteImport
+      parentRoute: typeof ApiAdminProjectsSlugRoute
+    }
+    '/api/admin/projects/$slug/bugs/$bugId/comments': {
+      id: '/api/admin/projects/$slug/bugs/$bugId/comments'
+      path: '/comments'
+      fullPath: '/api/admin/projects/$slug/bugs/$bugId/comments'
+      preLoaderRoute: typeof ApiAdminProjectsSlugBugsBugIdCommentsRouteImport
+      parentRoute: typeof ApiAdminProjectsSlugBugsBugIdRoute
     }
     '/api/admin/projects/$slug/wishes/$wishId/comments': {
       id: '/api/admin/projects/$slug/wishes/$wishId/comments'
@@ -992,12 +1086,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminProjectsSlugWishesWishIdCommentsRouteImport
       parentRoute: typeof ApiAdminProjectsSlugWishesWishIdRoute
     }
-    '/api/admin/projects/$slug/bugs/$bugId/comments': {
-      id: '/api/admin/projects/$slug/bugs/$bugId/comments'
-      path: '/comments'
-      fullPath: '/api/admin/projects/$slug/bugs/$bugId/comments'
-      preLoaderRoute: typeof ApiAdminProjectsSlugBugsBugIdCommentsRouteImport
-      parentRoute: typeof ApiAdminProjectsSlugBugsBugIdRoute
+    '/api/admin/projects/$slug/wishes/$wishId/merge': {
+      id: '/api/admin/projects/$slug/wishes/$wishId/merge'
+      path: '/merge'
+      fullPath: '/api/admin/projects/$slug/wishes/$wishId/merge'
+      preLoaderRoute: typeof ApiAdminProjectsSlugWishesWishIdMergeRouteImport
+      parentRoute: typeof ApiAdminProjectsSlugWishesWishIdRoute
+    }
+    '/api/v2/projects/$slug/issues/$issueId/notes': {
+      id: '/api/v2/projects/$slug/issues/$issueId/notes'
+      path: '/api/v2/projects/$slug/issues/$issueId/notes'
+      fullPath: '/api/v2/projects/$slug/issues/$issueId/notes'
+      preLoaderRoute: typeof ApiV2ProjectsSlugIssuesIssueIdNotesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key': {
       id: '/api/admin/projects/$slug/bugs/$bugId/screenshots/$key'
@@ -1149,6 +1250,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminProjectsRoute: ApiAdminProjectsRouteWithChildren,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthMcpRoute: ApiAuthMcpRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiBugCreateRoute: ApiBugCreateRoute,
   ApiBugListRoute: ApiBugListRoute,
@@ -1157,6 +1259,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
   ApiUserUpdateRoute: ApiUserUpdateRoute,
   ApiV1ProjectsRoute: ApiV1ProjectsRouteWithChildren,
+  ApiV2AttachmentsRoute: ApiV2AttachmentsRoute,
+  ApiV2FeaturesRoute: ApiV2FeaturesRoute,
+  ApiV2IssuesRoute: ApiV2IssuesRoute,
   ApiWishCreateRoute: ApiWishCreateRoute,
   ApiWishListRoute: ApiWishListRoute,
   ApiWishVoteRoute: ApiWishVoteRoute,
@@ -1169,6 +1274,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthPasskeyLoginVerifyRoute: ApiAuthPasskeyLoginVerifyRoute,
   ApiAuthPasskeyRegisterOptionsRoute: ApiAuthPasskeyRegisterOptionsRoute,
   ApiAuthPasskeyRegisterVerifyRoute: ApiAuthPasskeyRegisterVerifyRoute,
+  ApiV2ProjectsSlugIssuesIssueIdNotesRoute:
+    ApiV2ProjectsSlugIssuesIssueIdNotesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

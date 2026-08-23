@@ -2,6 +2,7 @@ import { defaultStreamHandler } from "@tanstack/react-start/server";
 import { createStartHandler } from "@tanstack/react-start/server";
 
 import type { Bindings, ServerRequestContext } from "#/server/types";
+import { handleOpenWishMcpRequest } from "#/server/mcp";
 
 const handleRequest = createStartHandler({
   handler: defaultStreamHandler,
@@ -12,6 +13,10 @@ export function fetchWithContext(
   env?: Bindings,
   executionContext?: ExecutionContext,
 ) {
+  if (env && new URL(request.url).pathname === "/mcp") {
+    return handleOpenWishMcpRequest(request, env, executionContext);
+  }
+
   const context: ServerRequestContext | undefined = env
     ? {
         env,

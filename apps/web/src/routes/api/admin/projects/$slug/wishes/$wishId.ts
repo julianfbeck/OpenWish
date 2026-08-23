@@ -1,4 +1,4 @@
-import { adminWishUpdateSchema } from "@openwish/shared";
+import { adminWishUpdateSchema, type ReporterNotificationStatus } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireAdminProject } from "#/server/auth";
@@ -49,6 +49,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId")
         );
 
         // Email the reporter only on a real transition into "implemented".
+        let reporterNotification: ReporterNotificationStatus = "not_requested";
         if (
           before &&
           bodyResult.data.state === "implemented" &&
@@ -59,7 +60,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId")
             projectResult.project.id,
             before.userUuid,
           );
-          await notifyReporter(requestContext, projectResult.project, {
+          reporterNotification = await notifyReporter(requestContext, projectResult.project, {
             event: "resolved",
             kind: "wish",
             userUuid: before.userUuid,
@@ -70,7 +71,7 @@ export const Route = createFileRoute("/api/admin/projects/$slug/wishes/$wishId")
         }
 
         const response = await loadAdminProject(requestContext.env.DB, projectResult.project);
-        return Response.json(response);
+        return Response.json({ ...response, reporterNotification });
       },
       DELETE: async ({ context, params, request }) => {
         const requestContext = requireRequestContext(context);
