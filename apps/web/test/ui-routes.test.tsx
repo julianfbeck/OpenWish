@@ -76,9 +76,13 @@ vi.mock("#/lib/use-dashboard-session", () => ({
   useDashboardSession: sessionMocks.useDashboardSession,
 }));
 
-vi.mock("#/lib/navigation", () => ({
-  assignLocation: navigationMocks.assignLocation,
-}));
+vi.mock("#/lib/navigation", async () => {
+  const actual = await vi.importActual<typeof import("../src/lib/navigation")>("../src/lib/navigation");
+  return {
+    ...actual,
+    assignLocation: navigationMocks.assignLocation,
+  };
+});
 
 import { DashboardAnalyticsPage } from "../src/routes/dashboard.$slug.analytics";
 import { DashboardBoardPage } from "../src/routes/dashboard.$slug";
@@ -226,9 +230,27 @@ describe("web routes", () => {
 
     await waitFor(() => {
       expect(apiMocks.loginDashboard).toHaveBeenCalledWith("admin", "secret-pass");
+      expect(navigationMocks.assignLocation).toHaveBeenCalledWith("/dashboard/projects");
     });
+  });
 
-    expect(navigationMocks.assignLocation).toHaveBeenCalledWith("/dashboard/projects");
+  it.each([
+    {
+      next: "/oauth/authorize?client_id=chatgpt&scope=mcp%3Aread&state=client-state",
+      expected: "/oauth/authorize?client_id=chatgpt&scope=mcp%3Aread&state=client-state",
+    },
+    { next: "https://example.test/escape", expected: "/dashboard/projects" },
+    { next: "//example.test/escape", expected: "/dashboard/projects" },
+  ])("safely handles the login return path $next", async ({ next, expected }) => {
+    window.history.replaceState({}, "", `/login?next=${encodeURIComponent(next)}`);
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "admin" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(apiMocks.loginDashboard).toHaveBeenCalledWith("admin", "secret-pass");
+      expect(navigationMocks.assignLocation).toHaveBeenCalledWith(expected);
+    });
   });
 
   it("renders the projects view and creates a new board", async () => {

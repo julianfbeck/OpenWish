@@ -93,12 +93,28 @@ policy does not permit you to collect.
 
 ### Agent access
 
-The deployed Worker exposes a bearer-protected, stateless Streamable HTTP MCP
-server at `https://<your-host>/mcp`. Its 20 tools cover project CRUD/settings,
-analytics, feature and issue CRUD, state transitions, reporter replies, merges,
-private notes, screenshots, and test email. The endpoint uses the existing
-`OPENWISH_GLOBAL_API_KEY`; the dashboard shows the MCP URL and masked/revealable
-bearer under **Projects → Agent access (MCP)**.
+The Worker implements a stateless Streamable HTTP MCP server at
+`https://<your-host>/mcp` with two authentication options:
+
+- **OAuth for ChatGPT:** add `https://wishkit.juli.sh/mcp` (or your own host)
+  as the MCP URL and select OAuth. Sign in with your existing OpenWish dashboard
+  login/passkey, choose existing projects and approve permissions. Reading is
+  the default; editing and destructive actions require additional permissions.
+  Manage or revoke connections at **Projects → Agent access (MCP) → Manage OAuth
+  access**. Automatic client registration handles OAuth client setup. Refresh
+  tokens rotate after each use; reusing a consumed token revokes the connection
+  and requires reconnecting.
+- **Global API key for trusted clients:** send
+  `Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>`. This retains full access to
+  all projects and all 20 tools, including project creation. The dashboard shows
+  the MCP URL and masked/revealable key under **Projects → Agent access (MCP)**.
+
+The tools cover project settings and analytics, feature and issue management,
+state transitions, reporter replies, merges, private notes, screenshots, and
+test email. OAuth grants apply to selected immutable project IDs; they cannot
+create new projects. Replies and resolution changes can email reporters.
+
+Example configuration for a client using the global key:
 
 ```json
 {
@@ -115,6 +131,14 @@ bearer under **Projects → Agent access (MCP)**.
 
 [`apps/mcp`](apps/mcp) remains available as a compatibility stdio bridge for
 clients that cannot connect to remote MCP servers.
+
+OAuth requires deployment of this version with its `MCP_OAUTH_STATE` SQLite
+Durable Object binding/migration and configured public origin. Adding the source
+does not enable OAuth on an existing deployment. Merge the OAuth settings from
+`apps/web/wrangler.example.jsonc` into your existing `wrangler.jsonc`, preserving
+your production resource IDs, domains, and prior migrations. See the
+[OAuth hosting prerequisites](apps/web/README.md#oauth-hosting-prerequisites)
+and [OpenAI's authentication guide](https://developers.openai.com/plugins/build/auth).
 
 ## Hosting OpenWish
 

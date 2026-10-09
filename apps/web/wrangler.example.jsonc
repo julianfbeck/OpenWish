@@ -2,8 +2,16 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "openwish",
   "compatibility_date": "2026-04-09",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "main": "src/server.ts",
+  "durable_objects": {
+    "bindings": [
+      { "name": "MCP_OAUTH_STATE", "class_name": "OpenWishOAuthState" }
+    ]
+  },
+  "migrations": [
+    { "tag": "mcp-oauth-v1", "new_sqlite_classes": ["OpenWishOAuthState"] }
+  ],
   // Copy this file to wrangler.jsonc and replace every "<...>" placeholder
   // with the values from your own Cloudflare resources (run the wrangler
   // commands in apps/web/README.md to provision them). wrangler.jsonc is
@@ -37,6 +45,7 @@
     }
   ],
   "vars": {
+    "OPENWISH_MCP_OAUTH_ORIGIN": "https://wishkit.example.com",
     "OPENWISH_CORS_ORIGIN": "https://wishkit.example.com",
     "OPENWISH_NOTIFICATION_FROM": "noreply@example.com",
     "OPENWISH_DASHBOARD_URL": "https://wishkit.example.com",

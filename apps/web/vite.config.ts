@@ -12,12 +12,16 @@ const config = defineConfig(({ mode }) => {
   const isTest = mode === 'test'
 
   return {
+    test: { server: { deps: { inline: ['@cloudflare/workers-oauth-provider'] } } },
     resolve: {
       tsconfigPaths: true,
       alias: isTest
         ? {
             'cloudflare:email': fileURLToPath(
               new URL('./test/support/cloudflare-email-shim.ts', import.meta.url),
+            ),
+            'cloudflare:workers': fileURLToPath(
+              new URL('./test/support/cloudflare-workers-shim.ts', import.meta.url),
             ),
           }
         : undefined,

@@ -13,7 +13,7 @@ import {
   loginDashboard,
   verifyPasskeyLogin,
 } from "#/lib/api";
-import { assignLocation } from "#/lib/navigation";
+import { assignLocation, safeLoginReturnPath } from "#/lib/navigation";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -46,7 +46,7 @@ export function LoginPage() {
   function postLoginRedirect() {
     const search = new URLSearchParams(window.location.search);
     const next = search.get("next");
-    assignLocation(next || "/dashboard/projects");
+    assignLocation(safeLoginReturnPath(next));
   }
 
   async function handlePasskeyLogin() {

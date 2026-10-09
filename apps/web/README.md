@@ -80,7 +80,17 @@ pnpm run deploy
   "name": "openwish",
   "main": "src/server.ts",
   "compatibility_date": "2026-04-09",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "MCP_OAUTH_STATE", "class_name": "OpenWishOAuthState" }
+    ]
+  },
+
+  "migrations": [
+    { "tag": "mcp-oauth-v1", "new_sqlite_classes": ["OpenWishOAuthState"] }
+  ],
 
   "routes": [
     { "pattern": "wishkit.example.com", "custom_domain": true }
@@ -108,6 +118,7 @@ pnpm run deploy
   ],
 
   "vars": {
+    "OPENWISH_MCP_OAUTH_ORIGIN": "https://wishkit.example.com",
     "OPENWISH_CORS_ORIGIN": "https://wishkit.example.com",
     "OPENWISH_NOTIFICATION_FROM": "noreply@example.com",
     "OPENWISH_DASHBOARD_URL": "https://wishkit.example.com",
@@ -125,6 +136,7 @@ pnpm run deploy
 | `OPENWISH_CORS_ORIGIN` | recommended | Restrict the dashboard SPA's allowed origin. `*` is fine in dev. |
 | `OPENWISH_NOTIFICATION_FROM` | required to send emails | Must be on a domain with Email Routing **active**. The recipient still has to be a verified destination address. |
 | `OPENWISH_DASHBOARD_URL` | recommended | Public URL the dashboard is served from — used to build the deep-link in notification emails AND as the WebAuthn `expectedOrigin`. |
+| `OPENWISH_MCP_OAUTH_ORIGIN` | required for OAuth | Fixed public HTTPS origin for OAuth discovery and endpoints, for example `https://wishkit.juli.sh`. It must match the host used by the MCP client. |
 | `OPENWISH_DASHBOARD_SESSION_DAYS` | optional | Dashboard session lifetime in days (default `30`). The session slides — every dashboard load re-issues the cookie — so you stay signed in as long as you visit within the window. |
 | `OPENWISH_PASSKEY_RP_ID` | required for passkeys | Must equal the host (no scheme, no port). E.g. `wishkit.example.com`. |
 | `OPENWISH_PASSKEY_RP_NAME` | optional | Shown in the OS passkey prompt. |
@@ -137,11 +149,11 @@ pnpm run deploy
 | --- | --- | --- |
 | `OPENWISH_DASHBOARD_USERNAME` | yes | The single admin identity. Once a passkey is registered, password sign-in is auto-locked but this var still defines the user the passkey is bound to. |
 | `OPENWISH_DASHBOARD_PASSWORD` | yes (initial) | Used for the very first sign-in so you can register a passkey. After at least one passkey exists, every password attempt returns 401. Delete rows in `auth_passkeys` to re-enable it. |
-| `OPENWISH_DASHBOARD_SESSION_SECRET` | yes | HMAC key for the 7-day signed session cookie. Generate with `openssl rand -base64 48`. |
+| `OPENWISH_DASHBOARD_SESSION_SECRET` | yes | HMAC key for the signed dashboard session cookie (30 days by default). Generate with `openssl rand -base64 48`. |
 | `OPENWISH_BOOTSTRAP_TOKEN` | optional | If set, allows `POST /api/admin/projects/bootstrap` to create projects without a dashboard session. Useful for the very first project before you log in. **Delete after first use** for the strongest posture. |
 | `OPENWISH_TURNSTILE_SECRET_KEY` | required for the public form | Server-side secret paired with the site key above. Used on `siteverify` calls. Set with `wrangler secret put OPENWISH_TURNSTILE_SECRET_KEY`. |
 | `CLOUDFLARE_EMAIL_API_TOKEN` | required for reporter emails | API token with the `email_sending:write` scope (create at `dash.cloudflare.com/profile/api-tokens`). Set with `wrangler secret put CLOUDFLARE_EMAIL_API_TOKEN`. |
-| `OPENWISH_GLOBAL_API_KEY` | required for the v1/CLI API and remote MCP | A single secret authorizing all projects through `/api/v1/**` and `/mcp`. Generate with `openssl rand -base64 32`; set with `wrangler secret put OPENWISH_GLOBAL_API_KEY`. Authenticated dashboard users can reveal/copy it under Projects → Agent access (MCP). |
+| `OPENWISH_GLOBAL_API_KEY` | required for the v1/CLI API and global-key MCP access | A single secret authorizing all projects through `/api/v1/**` and `/mcp`. Generate with `openssl rand -base64 32`; set with `wrangler secret put OPENWISH_GLOBAL_API_KEY`. Authenticated dashboard users can reveal/copy it under Projects → Agent access (MCP). OAuth grants use their own tokens and project permissions. |
 
 ---
 
@@ -246,7 +258,10 @@ Missing/invalid key → 401; key not configured on the server → 503; unknown p
 ### Remote MCP (`/mcp`) — for coding agents
 
 `POST /mcp` is a stateless Streamable HTTP MCP server built with Cloudflare's
-Agents SDK and MCP SDK v2. It accepts only:
+Agents SDK and MCP SDK v2. It accepts existing global API-key bearers and
+project-scoped OAuth access tokens through the standard `Authorization` header.
+
+#### Global API-key access
 
 ```http
 Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>
@@ -263,6 +278,80 @@ deletion requires the slug twice.
 The URL and bearer are available only to an authenticated dashboard session at
 Projects → Agent access (MCP). The token response is marked `no-store`; do not
 put it in source control, logs, prompts, or tool output.
+
+#### OAuth access for ChatGPT
+
+After deploying OAuth support, add `https://wishkit.juli.sh/mcp` (or your own
+host's `/mcp`) in ChatGPT's MCP connection settings and choose **OAuth**. Automatic
+client registration handles the OAuth client setup. Sign in using the existing
+OpenWish dashboard login/passkey and approve the client, selected existing
+projects, and permissions shown by the consent page.
+
+| Scope | Permission for selected projects |
+| --- | --- |
+| `mcp:read` | Default. Read project metadata, analytics, features, issues, private notes, and screenshots. Issue data can include reporter contact and diagnostic information. |
+| `mcp:write` | Create/edit feedback, change workflow state, add notes, update project settings, reply to reporters, and send test emails. Replies and resolution changes can send reporter emails. |
+| `mcp:admin` | Perform administrative/destructive operations on selected existing projects, including merging or deleting feedback and deleting projects. |
+| `offline_access` | Optional. Request refresh access so the connection can continue after the current access token expires. |
+
+Grants store immutable project IDs. Recreating a deleted project's slug does not
+inherit its grants. OAuth never exposes project creation: that global operation
+returns new SDK/admin credentials. The global API-key path retains its existing
+cross-project behavior.
+
+Authorization codes and pending consent expire after 10 minutes. Access tokens
+expire after 15 minutes. Refresh access has a fixed 30-day grant lifetime and is
+issued only when the client requests `offline_access` and the owner explicitly
+approves it. Each refresh token can be used once and is replaced on a successful
+refresh. OpenWish enforces strict rotation over the OAuth provider: reusing a
+consumed refresh token returns `invalid_grant` and revokes the entire grant.
+There is no retry grace for a consumed token. The client must reconnect and
+approve access again after replay revocation; rotation does not extend the
+original grant lifetime.
+Review and revoke access at `/oauth/grants` while signed in to the dashboard.
+Consent and revocation use the dashboard cookie, browser-bound CSRF protection,
+and same-origin POSTs.
+
+Discovery is served at `/.well-known/oauth-protected-resource/mcp` and
+`/.well-known/oauth-authorization-server`. The authorization, token, registration,
+and revocation endpoints are `/oauth/authorize`, `/oauth/token`,
+`/oauth/register`, and `/oauth/revoke`. OAuth uses the authorization-code flow
+with PKCE `S256`, Client ID Metadata Documents (CIMD), and Dynamic Client
+Registration (DCR). Resource/audience and registered redirect URIs are validated.
+See the [OpenAI authentication guide](https://developers.openai.com/plugins/build/auth)
+and [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization).
+
+OAuth-routed requests buffer at most 16 KiB for OAuth endpoints and 256 KiB for
+MCP requests, with a five-second body-read deadline before entering the serialized
+OAuth queue. Oversized bodies return 413 and slow body uploads return 408.
+Durable Object alarms remove expired state in bounded batches, scheduling expiry
+work and hourly sweeps; authorization checks enforce expiry independently of
+cleanup.
+
+#### OAuth hosting prerequisites
+
+The OAuth source needs the following deployment configuration before clients can
+use it on an existing host:
+
+1. Install the declared `@cloudflare/workers-oauth-provider` version `1.2.3`.
+2. Merge the `MCP_OAUTH_STATE` binding, SQLite Durable Object migration,
+   `global_fetch_strictly_public` flag, and OAuth origin from the tracked
+   `wrangler.example.jsonc` into your existing, gitignored `wrangler.jsonc`.
+   Preserve production database IDs, bucket/KV bindings, domains, other settings,
+   and prior migration entries; append the OAuth migration. The object serializes
+   OAuth storage operations. OAuth uses
+   this storage independently of the existing D1 feedback database.
+3. Set the public origin, for example
+   `OPENWISH_MCP_OAUTH_ORIGIN=https://wishkit.juli.sh`, and retain the
+   `global_fetch_strictly_public` compatibility flag for public OAuth metadata
+   fetches.
+4. Keep the existing dashboard login/passkey configuration available, deploy
+   the Worker, then authorize the connection through the consent page.
+
+OAuth does not require a new signing secret or an `OAUTH_KV` binding. Installing
+the dependency, provisioning the production binding/migration, deploying, and
+granting access are separate operational actions; local source changes alone
+do not establish a live connection.
 
 ### Public feedback page
 

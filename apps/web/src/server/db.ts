@@ -20,6 +20,8 @@ import {
   type IssueNote,
 } from "@openwish/shared";
 
+import { isScreenshotKeyForProject } from "./bug-constants";
+
 import type {
   BugCommentRow,
   BugRow,
@@ -789,8 +791,13 @@ export async function loadAdminProject(
 export async function deleteProject(
   db: D1Database,
   slug: string,
+  projectId?: string,
 ) {
-  await db.prepare(`DELETE FROM projects WHERE slug = ?`).bind(slug).run();
+  if (projectId) {
+    await db.prepare(`DELETE FROM projects WHERE slug = ? AND id = ?`).bind(slug, projectId).run();
+  } else {
+    await db.prepare(`DELETE FROM projects WHERE slug = ?`).bind(slug).run();
+  }
 }
 
 export async function recordAnalyticsEvent(
@@ -1237,7 +1244,7 @@ export async function deleteBug(
     return { deleted: false, screenshotKeys: [] };
   }
 
-  const keys = parseScreenshotKeys(row.screenshot_keys);
+  const keys = parseScreenshotKeys(row.screenshot_keys).filter((key) => isScreenshotKeyForProject(key, project.id));
 
   await db
     .prepare(`DELETE FROM bug_comments WHERE project_id = ? AND bug_id = ?`)

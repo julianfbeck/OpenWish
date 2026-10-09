@@ -21,6 +21,9 @@ export type Bindings = {
   // programmatic API under /api/v1/** — used by the Go CLI. Unlike per-project
   // api_keys, this one key can read and write every project.
   OPENWISH_GLOBAL_API_KEY?: string;
+  // Optional OAuth coordinator. No OAuth routes are enabled until both are configured.
+  MCP_OAUTH_STATE?: DurableObjectNamespace;
+  OPENWISH_MCP_OAUTH_ORIGIN?: string;
   OPENWISH_PASSKEY_RP_ID?: string;
   OPENWISH_PASSKEY_RP_NAME?: string;
   OPENWISH_TURNSTILE_SITE_KEY?: string;

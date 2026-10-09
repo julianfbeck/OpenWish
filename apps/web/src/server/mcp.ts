@@ -11,6 +11,8 @@ import { z } from "zod";
 
 import { resolveAppStoreMetadata } from "./app-store";
 import { requireMcpBearer, requireProjectBySlug } from "./auth";
+import { isScreenshotKeyForProject } from "./bug-constants";
+import { dashboardMcpSubject, mcpAuthChallenge, mcpResource, mcpScopeFor, type McpAccess } from "./mcp-access";
 import {
   bootstrapProject,
   createBugComment,
@@ -57,16 +59,64 @@ function failure(message: string) {
   };
 }
 
-async function projectFor(env: Bindings, projectSlug: string): Promise<ProjectRow> {
+async function projectFor(env: Bindings, projectSlug: string, access?: McpAccess): Promise<ProjectRow> {
   const found = await requireProjectBySlug({ env }, projectSlug);
   if (!found.ok) {
     throw new Error(`OpenWish project '${projectSlug}' was not found.`);
   }
+  if (access && !access.projectIds.includes(found.project.id)) {
+    throw new Error("This project is not part of this authorization.");
+  }
   return found.project;
 }
 
-function registerTools(server: McpServer, env: Bindings) {
-  server.registerTool(
+function registerTools(server: McpServer, env: Bindings, request: Request, access?: McpAccess) {
+  const listedTools: Array<{
+    name: string;
+    registered: ReturnType<McpServer["registerTool"]>;
+    securitySchemes: Array<{ type: "oauth2"; scopes: string[] }>;
+  }> = [];
+  // Keep the SDK's schema inference at call sites, while enforcing authorization
+  // centrally before any tool callback (including future tools) can run.
+  const registerTool = ((...args: Parameters<McpServer["registerTool"]>) => {
+    const [name, config, callback] = args;
+    const scope = mcpScopeFor(config.annotations);
+    const required = scope === "mcp:read" ? [scope] : ["mcp:read", scope];
+    const securitySchemes = [{ type: "oauth2" as const, scopes: required }];
+    const registered = server.registerTool(name, {
+      ...config,
+      _meta: {
+        ...config._meta,
+        securitySchemes,
+      },
+    }, async (input, extra) => {
+      if (access) {
+        if (name === "openwish_create_project") {
+          return failure("Creating projects and SDK credentials requires API-key access.");
+        }
+        if (!required.every((needed) => access.scopes.includes(needed))) {
+          const description = "Approve the requested permission before using this tool.";
+          return {
+            ...failure(description),
+            _meta: { "mcp/www_authenticate": [mcpAuthChallenge(mcpResource(env, request), required, description)] },
+          };
+        }
+        if (name !== "openwish_list_projects") {
+          if (typeof input.project !== "string") return failure("A project-scoped authorization is required.");
+          const found = await requireProjectBySlug({ env }, input.project);
+          if (!found.ok || !access.projectIds.includes(found.project.id)) {
+            return failure("This project is not part of this authorization.");
+          }
+        }
+      }
+      return callback(input, extra);
+    });
+    if (access && name === "openwish_create_project") registered.disable();
+    listedTools.push({ name, registered, securitySchemes });
+    return registered;
+  }) as McpServer["registerTool"];
+
+  registerTool(
     "openwish_list_projects",
     {
       title: "List OpenWish projects",
@@ -76,13 +126,19 @@ function registerTools(server: McpServer, env: Bindings) {
     },
     async () => {
       const projects = await loadProjectSummaries(env.DB);
+      const allowed = access
+        ? (await Promise.all(projects.map(async (project) => {
+            const found = await requireProjectBySlug({ env }, project.slug);
+            return found.ok && access.projectIds.includes(found.project.id) ? project : null;
+          }))).filter((project) => project !== null)
+        : projects;
       return result({
-        projects: projects.map(({ apiKey: _apiKey, ...project }) => project),
+        projects: allowed.map(({ apiKey: _apiKey, ...project }) => project),
       });
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_create_project",
     {
       title: "Create an OpenWish project",
@@ -97,7 +153,7 @@ function registerTools(server: McpServer, env: Bindings) {
     async (input) => result(await bootstrapProject(env.DB, input)),
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_get_project",
     {
       title: "Get project and features",
@@ -105,10 +161,10 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug }),
       annotations: { readOnlyHint: true },
     },
-    async ({ project }) => result(await loadAdminProject(env.DB, await projectFor(env, project))),
+    async ({ project }) => result(await loadAdminProject(env.DB, await projectFor(env, project, access))),
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_get_project_analytics",
     {
       title: "Get project analytics",
@@ -116,10 +172,10 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug }),
       annotations: { readOnlyHint: true },
     },
-    async ({ project }) => result(await loadProjectAnalytics(env.DB, await projectFor(env, project))),
+    async ({ project }) => result(await loadProjectAnalytics(env.DB, await projectFor(env, project, access))),
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_update_project_settings",
     {
       title: "Update project settings",
@@ -133,7 +189,7 @@ function registerTools(server: McpServer, env: Bindings) {
       }),
     },
     async ({ project, appStoreUrl, ...settings }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const patch: Parameters<typeof updateProjectSettings>[2] = settings;
       if (appStoreUrl !== undefined) {
         if (appStoreUrl === null) {
@@ -153,7 +209,7 @@ function registerTools(server: McpServer, env: Bindings) {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_delete_project",
     {
       title: "Delete project",
@@ -163,13 +219,13 @@ function registerTools(server: McpServer, env: Bindings) {
     },
     async ({ project, confirmProjectSlug }) => {
       if (project !== confirmProjectSlug) return failure("confirmProjectSlug must exactly match project.");
-      await projectFor(env, project);
-      await deleteProject(env.DB, project);
+      const row = await projectFor(env, project, access);
+      await deleteProject(env.DB, project, row.id);
       return result({ deleted: true, project });
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_create_feature",
     {
       title: "Create feature request",
@@ -184,14 +240,14 @@ function registerTools(server: McpServer, env: Bindings) {
       }),
     },
     async ({ project, reporterEmail, reporterUserId, ...input }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const userId = reporterUserId ?? crypto.randomUUID();
       if (reporterEmail) await upsertUser(env.DB, row.id, userId, { email: reporterEmail });
       return result(await createWish(env.DB, row, userId, { ...input, email: reporterEmail }));
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_update_feature",
     {
       title: "Update feature request",
@@ -205,7 +261,7 @@ function registerTools(server: McpServer, env: Bindings) {
       }),
     },
     async ({ project, featureId, ...patch }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const before = await getWishMeta(env.DB, row.id, featureId);
       if (!before) return failure("Feature request not found.");
       await updateWish(env.DB, row.id, featureId, patch);
@@ -221,7 +277,7 @@ function registerTools(server: McpServer, env: Bindings) {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_reply_to_feature",
     {
       title: "Reply to feature reporter",
@@ -229,7 +285,7 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug, featureId: uuid, message: z.string().min(1).max(2_000) }),
     },
     async ({ project, featureId, message }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const meta = await getWishMeta(env.DB, row.id, featureId);
       if (!meta) return failure("Feature request not found.");
       await createComment(env.DB, row.id, featureId, crypto.randomUUID(), message, true);
@@ -242,7 +298,7 @@ function registerTools(server: McpServer, env: Bindings) {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_merge_features",
     {
       title: "Merge feature requests",
@@ -251,13 +307,13 @@ function registerTools(server: McpServer, env: Bindings) {
       annotations: { destructiveHint: true },
     },
     async ({ project, sourceFeatureId, targetFeatureId }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const merged = await mergeWish(env.DB, row.id, sourceFeatureId, targetFeatureId);
       return merged ? result(await loadAdminProject(env.DB, row)) : failure("Both features must exist and be different.");
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_delete_feature",
     {
       title: "Delete feature request",
@@ -266,14 +322,14 @@ function registerTools(server: McpServer, env: Bindings) {
       annotations: { destructiveHint: true },
     },
     async ({ project, featureId }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       return (await deleteWish(env.DB, row.id, featureId))
         ? result({ deleted: true, featureId })
         : failure("Feature request not found.");
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_list_issues",
     {
       title: "List bugs and card-data issues",
@@ -281,10 +337,10 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug }),
       annotations: { readOnlyHint: true },
     },
-    async ({ project }) => result({ list: await loadAdminBugs(env.DB, await projectFor(env, project)) }),
+    async ({ project }) => result({ list: await loadAdminBugs(env.DB, await projectFor(env, project, access)) }),
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_create_issue",
     {
       title: "Create bug or card-data issue",
@@ -302,14 +358,19 @@ function registerTools(server: McpServer, env: Bindings) {
       }),
     },
     async ({ project, reporterEmail, reporterUserId, ...input }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
+      for (const key of input.screenshotKeys) {
+        if (!isScreenshotKeyForProject(key, row.id) || !(await env.BUGS_BUCKET.head(key))) {
+          return failure("Screenshot keys must identify existing screenshots in this project.");
+        }
+      }
       return result(await createV2Issue(env.DB, row, reporterUserId ?? crypto.randomUUID(), {
         ...input, email: reporterEmail,
       }));
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_update_issue",
     {
       title: "Update issue",
@@ -323,7 +384,7 @@ function registerTools(server: McpServer, env: Bindings) {
       }),
     },
     async ({ project, issueId, ...patch }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const before = await getBugMeta(env.DB, row.id, issueId);
       if (!before) return failure("Issue not found.");
       const issue = await updateBug(env.DB, row, issueId, patch);
@@ -339,7 +400,7 @@ function registerTools(server: McpServer, env: Bindings) {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_reply_to_issue",
     {
       title: "Reply to issue reporter",
@@ -347,7 +408,7 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug, issueId: uuid, message: z.string().min(1).max(2_000) }),
     },
     async ({ project, issueId, message }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const meta = await getBugMeta(env.DB, row.id, issueId);
       if (!meta) return failure("Issue not found.");
       const issue = await createBugComment(env.DB, row, issueId, crypto.randomUUID(), message, true);
@@ -360,7 +421,7 @@ function registerTools(server: McpServer, env: Bindings) {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_list_issue_notes",
     {
       title: "List private issue notes",
@@ -369,12 +430,12 @@ function registerTools(server: McpServer, env: Bindings) {
       annotations: { readOnlyHint: true },
     },
     async ({ project, issueId }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       return result({ list: await loadIssueNotes(env.DB, row.id, issueId) });
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_add_issue_note",
     {
       title: "Add private issue note",
@@ -382,13 +443,13 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug, issueId: uuid, body: z.string().min(1).max(4_000) }),
     },
     async ({ project, issueId, body }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const note = await createIssueNote(env.DB, row.id, issueId, body);
       return note ? result(note) : failure("Issue not found.");
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_delete_issue",
     {
       title: "Delete issue",
@@ -397,13 +458,13 @@ function registerTools(server: McpServer, env: Bindings) {
       annotations: { destructiveHint: true },
     },
     async ({ project, issueId }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const deleted = await deleteBug(env.DB, env.BUGS_BUCKET, row, issueId);
       return deleted.deleted ? result({ deleted: true, issueId, screenshotsDeleted: deleted.screenshotKeys.length }) : failure("Issue not found.");
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_get_issue_screenshot",
     {
       title: "Read issue screenshot",
@@ -412,9 +473,9 @@ function registerTools(server: McpServer, env: Bindings) {
       annotations: { readOnlyHint: true },
     },
     async ({ project, issueId, key }) => {
-      const row = await projectFor(env, project);
+      const row = await projectFor(env, project, access);
       const issue = (await loadAdminBugs(env.DB, row)).find((item) => item.id === issueId);
-      if (!issue || !issue.screenshotKeys.includes(key)) return failure("Screenshot not found on this issue.");
+      if (!isScreenshotKeyForProject(key, row.id) || !issue || !issue.screenshotKeys.includes(key)) return failure("Screenshot not found on this issue.");
       const object = await env.BUGS_BUCKET.get(key);
       if (!object) return failure("Screenshot object not found.");
       const bytes = new Uint8Array(await object.arrayBuffer());
@@ -424,7 +485,7 @@ function registerTools(server: McpServer, env: Bindings) {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "openwish_send_test_email",
     {
       title: "Send project test email",
@@ -432,13 +493,36 @@ function registerTools(server: McpServer, env: Bindings) {
       inputSchema: z.object({ project: slug, to: z.string().email() }),
     },
     async ({ project, to }) => {
-      await sendTestEmail(env, to, await projectFor(env, project));
+      await sendTestEmail(env, to, await projectFor(env, project, access));
       return result({ sent: true, to });
     },
   );
+
+  // SDK v2's high-level tools/list drops nonstandard top-level fields. Publish
+  // the OpenAI auth declaration through its public low-level handler, retaining
+  // the _meta mirror and the same Standard JSON Schema conversion as the SDK.
+  // Tool invocation and schema validation continue through the SDK's handlers.
+  server.server.setRequestHandler("tools/list", () => ({
+    tools: listedTools.filter(({ registered }) => registered.enabled).map(({ name, registered, securitySchemes }) => ({
+      name,
+      title: registered.title,
+      description: registered.description,
+      inputSchema: registered.inputSchema
+        ? { type: "object", ...registered.inputSchema["~standard"].jsonSchema.input({ target: "draft-2020-12" }) }
+        : { type: "object", properties: {} },
+      ...(registered.outputSchema
+        ? { outputSchema: registered.outputSchema["~standard"].jsonSchema.output({ target: "draft-2020-12" }) }
+        : {}),
+      annotations: registered.annotations,
+      icons: registered.icons,
+      execution: registered.execution,
+      securitySchemes,
+      _meta: { ...registered._meta, securitySchemes },
+    })),
+  }));
 }
 
-function createOpenWishMcpServer(env: Bindings) {
+function createOpenWishMcpServer(env: Bindings, request: Request, access?: McpAccess) {
   const server = new McpServer(
     { name: "openwish", version: "2.0.0" },
     {
@@ -446,7 +530,7 @@ function createOpenWishMcpServer(env: Bindings) {
         "Manage OpenWish projects, feature requests, bugs, card-data issues, replies, notes, analytics, and settings. Confirm destructive actions with the user. Never reveal or repeat the bearer token.",
     },
   );
-  registerTools(server, env);
+  registerTools(server, env, request, access);
   return server;
 }
 
@@ -454,16 +538,30 @@ export async function handleOpenWishMcpRequest(
   request: Request,
   env: Bindings,
   executionContext?: ExecutionContext,
+  access?: McpAccess,
 ): Promise<Response> {
-  const auth = requireMcpBearer({ env, request });
-  if (!auth.ok) return auth.response;
+  if (access) {
+    const username = env.OPENWISH_DASHBOARD_USERNAME?.trim();
+    if (!username || access.subject !== await dashboardMcpSubject(username)) {
+      return new Response("Authorization is no longer valid.", { status: 401, headers: { "Cache-Control": "no-store" } });
+    }
+    if (!access.scopes.includes("mcp:read") || access.projectIds.length === 0) {
+      return new Response("Project read permission is required.", {
+        status: 403,
+        headers: { "Cache-Control": "no-store", "WWW-Authenticate": mcpAuthChallenge(mcpResource(env, request), ["mcp:read"], "Project read permission is required.") },
+      });
+    }
+  } else {
+    const auth = requireMcpBearer({ env, request });
+    if (!auth.ok) return auth.response;
+  }
 
-  const handler = createMcpHandler(() => createOpenWishMcpServer(env), {
+  const handler = createMcpHandler(() => createOpenWishMcpServer(env, request, access), {
     route: "/mcp",
-    allowedHostnames: ["wishkit.juli.sh", "localhost", "127.0.0.1"],
-    allowedOriginHostnames: ["wishkit.juli.sh", "localhost", "127.0.0.1"],
+    allowedHostnames: [new URL(mcpResource(env, request)).hostname, "wishkit.juli.sh", "localhost", "127.0.0.1"],
+    allowedOriginHostnames: [new URL(mcpResource(env, request)).hostname, "wishkit.juli.sh", "localhost", "127.0.0.1"],
     corsOptions: false,
-    onerror: (error) => console.error("[openwish] MCP request failed.", error),
+    onerror: () => console.error("[openwish] MCP request failed."),
   });
   const context =
     executionContext ??

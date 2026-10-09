@@ -1070,12 +1070,15 @@ export class MockD1Database {
 
     if (normalized.includes("DELETE FROM projects WHERE slug = ?")) {
       const slug = String(bindings[0] ?? "");
-      const project = this.state.projects.find((entry) => entry.slug === slug);
+      const projectId = normalized.includes("AND id = ?") ? String(bindings[1] ?? "") : null;
+      const project = this.state.projects.find(
+        (entry) => entry.slug === slug && (projectId === null || entry.id === projectId),
+      );
       if (!project) {
         return { success: true };
       }
 
-      this.state.projects = this.state.projects.filter((entry) => entry.slug !== slug);
+      this.state.projects = this.state.projects.filter((entry) => entry.id !== project.id);
       this.state.users = this.state.users.filter((entry) => entry.project_id !== project.id);
       this.state.wishes = this.state.wishes.filter((entry) => entry.project_id !== project.id);
       this.state.votes = this.state.votes.filter((entry) => entry.project_id !== project.id);

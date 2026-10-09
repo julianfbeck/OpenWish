@@ -37,12 +37,17 @@ export function McpAccessPanel() {
           <div>
             <h3 className="text-sm font-medium text-white">Agent access (MCP)</h3>
             <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-              Full OpenWish access for trusted agents. Keep this bearer secret.
+              Choose projects with OAuth, or use a global API key for full access.
             </p>
           </div>
         </div>
 
-        {error ? <p className="text-xs text-red-300">{error}</p> : null}
+        <p className="text-xs leading-relaxed text-neutral-400">
+          For ChatGPT, connect the MCP URL using OAuth, sign in, and choose projects and permissions.{" "}
+          <a href="/oauth/grants" className="text-neutral-200 underline underline-offset-2">Manage OAuth access</a>.
+        </p>
+
+        {error ? <p className="text-xs text-red-300">Global API key: {error}</p> : null}
         {!access && !error ? <p className="text-xs text-neutral-500">Loading…</p> : null}
 
         {access ? (
@@ -54,7 +59,7 @@ export function McpAccessPanel() {
               onCopy={() => copy("endpoint", access.endpoint)}
             />
             <SecretRow
-              label="Authorization bearer"
+              label="Global API key"
               displayValue={revealed ? access.token : `••••••••••••${access.token.slice(-6)}`}
               copied={copied === "token"}
               onCopy={() => copy("token", access.token)}
