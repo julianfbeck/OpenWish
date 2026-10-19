@@ -123,6 +123,21 @@ function invalid(message = "This authorization is invalid or expired. Start agai
   return html(`<h1>Authorization could not continue</h1><p>${escape(message)}</p>`, status);
 }
 
+/** Show the provider's own reason (written for people; never a token) and log it,
+ * so a failed connection attempt can be diagnosed from `wrangler tail`. */
+function rejected(stage: "request" | "consent", error: unknown, fallback?: string) {
+  const reason = error instanceof AuthorizationError ? error.description
+    : error instanceof CimdFetchError ? `The application's client metadata could not be loaded (${error.detail})`
+    : fallback;
+  console.warn("[openwish] OAuth authorization rejected", JSON.stringify({
+    stage,
+    error: error instanceof Error ? error.name : String(error),
+    code: error instanceof AuthorizationError ? error.code : undefined,
+    reason: reason ?? (error instanceof Error ? error.message : undefined),
+  }));
+  return invalid(reason ? `${reason.replace(/[.;\s]+$/, "")}. Start the connection again from the application.` : undefined);
+}
+
 export function openWishOAuthOrigin(env: Bindings): string | null {
   if (!env.OPENWISH_MCP_OAUTH_ORIGIN) return null;
   try {
@@ -243,7 +258,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
     } catch (error) {
       // Only parseAuthRequest's validated redirect context is safe to use.
       if (error instanceof AuthorizationError && error.redirectTo) return Response.redirect(error.redirectTo, 302);
-      if (error instanceof AuthorizationError || error instanceof CimdFetchError) return invalid();
+      if (error instanceof AuthorizationError || error instanceof CimdFetchError) return rejected("request", error);
       throw error;
     }
   }
@@ -254,7 +269,10 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
     const handle = one(form, "handle");
     const policyKey = `ui:consent:${await digest(handle)}`;
     const policy = await env.OAUTH_KV.get<ConsentPolicy>(policyKey, "json");
-    if (!policy || policy.subject !== subject) return invalid();
+    if (!policy || policy.subject !== subject) {
+      return rejected("consent", policy ? "subject-mismatch" : "policy-missing",
+        "This consent page expired after 10 minutes or belongs to another sign-in");
+    }
     const decision = one(form, "decision");
     if (decision === "deny") {
       const denied = await oauth.denyConsent(request, handle);
@@ -289,7 +307,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
     return new Response(null, { status: 302, headers: approved.headers });
   } catch (error) {
     // Errors after a form submission have no trusted redirect context.
-    if (error instanceof AuthorizationError || error instanceof CimdFetchError || error instanceof TypeError) return invalid();
+    if (error instanceof AuthorizationError || error instanceof CimdFetchError || error instanceof TypeError) return rejected("consent", error);
     throw error;
   }
 }

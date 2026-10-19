@@ -632,6 +632,28 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     expect(response.headers.has("location")).toBe(false);
   });
 
+  it("explains why a consent submission was rejected and logs the reason", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const f = await fixture();
+    const page = await f.consent(await f.register());
+
+    const unbound = await f.approve(page, { cookie: f.dashboardCookie });
+    expect(unbound.status).toBe(400);
+    expect(await unbound.text()).toContain("This authorization was not started in this browser");
+
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now + 11 * 60 * 1000);
+    const expired = await f.approve(page);
+    expect(expired.status).toBe(400);
+    expect(await expired.text()).toContain("This consent page expired after 10 minutes");
+
+    const logged = warn.mock.calls.map((call) => String(call[1]));
+    expect(logged.some((entry) => entry.includes("\"code\":\"invalid_request\""))).toBe(true);
+    expect(logged.some((entry) => entry.includes("policy-missing"))).toBe(true);
+    expect(logged.join("\n")).not.toContain(page.handle);
+    vi.restoreAllMocks();
+  });
+
   it("rejects missing Origin and a consent handle replay, including simultaneous submissions", async () => {
     const f = await fixture();
     const page = await f.consent(await f.register());
