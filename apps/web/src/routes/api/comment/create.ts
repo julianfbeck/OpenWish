@@ -2,8 +2,9 @@ import { createCommentRequestSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { requireProjectFromApiKey, requireUserUuid } from "#/server/auth";
-import { createComment } from "#/server/db";
+import { createComment, getWishMeta } from "#/server/db";
 import { parseJson, sdkError } from "#/server/http";
+import { sendCommentNotification } from "#/server/notifications";
 import { enforceSdkRateLimit } from "#/server/rate-limit";
 import { requireRequestContext } from "#/server/route-context";
 
@@ -54,6 +55,28 @@ export const Route = createFileRoute("/api/comment/create")({
 
         if (!response) {
           return sdkError("unknown", 404);
+        }
+
+        if (projectResult.project.notification_email) {
+          const project = projectResult.project;
+          const notify = getWishMeta(requestContext.env.DB, project.id, bodyResult.data.wishId)
+            .then((wish) =>
+              sendCommentNotification(requestContext.env, project, {
+                kind: "wish",
+                title: wish?.title ?? "Untitled",
+                description: bodyResult.data.description,
+                userUUID: userResult.uuid,
+              }),
+            )
+            .catch(() => {
+              // ignore — email failures must not break SDK responses
+            });
+
+          if (requestContext.executionContext) {
+            requestContext.executionContext.waitUntil(notify);
+          } else {
+            await notify;
+          }
         }
 
         return Response.json(response);

@@ -12,7 +12,7 @@ OpenWish is a **self-hosted Cloudflare backend, admin dashboard, and Swift SDK f
 | Wishes (feature requests) | ✅ | ✅ — same Swift SDK contract |
 | Bug + card-data reports with screenshots | ❌ | ✅ R2-backed, up to 4 per issue |
 | User-visible "my bug reports" with admin replies | ❌ | ✅ |
-| Email notifications on new wishes / bugs | ❌ | ✅ via Cloudflare Email Routing |
+| Email notifications on new wishes / bugs / user comments | ❌ | ✅ via Cloudflare Email Routing |
 | Per-project notification email + send-test from the dashboard | ❌ | ✅ |
 | Single-user dashboard auth | password only | password **+ passkeys** (WebAuthn, multi-device) |
 | Rate limiting per device + per project | ❌ | ✅ Workers KV–backed fixed windows |

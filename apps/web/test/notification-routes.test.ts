@@ -10,6 +10,8 @@ const projectId = "project-emails";
 const apiKey = "ow_api_emails";
 const projectSlug = "emails-app";
 const ownerUuid = "11111111-1111-4111-8111-111111111111";
+const commenterUuid = "22222222-2222-4222-8222-222222222222";
+const wishId = "33333333-3333-4333-8333-333333333333";
 const adminEmail = "owner@example.com";
 
 function createEnv(db: MockD1Database, bucket: MockR2Bucket, email: MockSendEmail) {
@@ -175,6 +177,71 @@ describe("notification email flow", () => {
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0]?.to).toBe(adminEmail);
     expect(email.sent[0]?.raw).toContain("Crash");
+  });
+
+  it("fires a notification email when a user comments on a wish", async () => {
+    db.state.projects[0]!.notification_email = adminEmail;
+    db.state.wishes.push({
+      id: wishId,
+      project_id: projectId,
+      user_uuid: ownerUuid,
+      title: "Dark mode",
+      description: "Please add a dark theme.",
+      state: "pending",
+      created_at: "2026-04-09T08:00:00.000Z",
+      updated_at: "2026-04-09T08:00:00.000Z",
+    });
+
+    const response = await requestApp(
+      "/api/comment/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wishkit-api-key": apiKey,
+          "x-wishkit-uuid": commenterUuid,
+        },
+        body: JSON.stringify({ wishId, description: "Would love this for night shifts." }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(email.sent).toHaveLength(1);
+    expect(email.sent[0]?.to).toBe(adminEmail);
+    expect(email.sent[0]?.raw).toContain("Dark mode");
+    expect(email.sent[0]?.raw).toContain("Would love this for night shifts.");
+    expect(email.sent[0]?.raw).toContain(commenterUuid);
+  });
+
+  it("does not email about a comment when the project has no notification email", async () => {
+    db.state.wishes.push({
+      id: wishId,
+      project_id: projectId,
+      user_uuid: ownerUuid,
+      title: "Dark mode",
+      description: "Please add a dark theme.",
+      state: "pending",
+      created_at: "2026-04-09T08:00:00.000Z",
+      updated_at: "2026-04-09T08:00:00.000Z",
+    });
+
+    const response = await requestApp(
+      "/api/comment/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wishkit-api-key": apiKey,
+          "x-wishkit-uuid": commenterUuid,
+        },
+        body: JSON.stringify({ wishId, description: "Quiet comment." }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(email.sent).toHaveLength(0);
   });
 
   it("does not send a notification email when the project has none configured", async () => {

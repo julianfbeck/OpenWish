@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const routeState = vi.hoisted(() => ({
   params: { slug: "atlas" },
+  pathname: "/dashboard/atlas",
 }));
 
 const apiMocks = vi.hoisted(() => ({
@@ -43,6 +44,9 @@ vi.mock("@tanstack/react-router", async () => {
         {children}
       </a>
     ),
+    Outlet: () => null,
+    useRouterState: ({ select }: any) =>
+      select({ location: { pathname: routeState.pathname } }),
     createFileRoute: () => (options: any) => ({
       ...options,
       options,
@@ -85,7 +89,7 @@ vi.mock("#/lib/navigation", async () => {
 });
 
 import { DashboardAnalyticsPage } from "../src/routes/dashboard.$slug.analytics";
-import { DashboardBoardPage } from "../src/routes/dashboard.$slug";
+import { DashboardBoardPage, DashboardSlugRouteLayout } from "../src/routes/dashboard.$slug";
 import { DashboardProjectsPage } from "../src/routes/dashboard.projects";
 import { LoginPage } from "../src/routes/login";
 
@@ -162,6 +166,8 @@ describe("web routes", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     routeState.params = { slug: "atlas" };
+    routeState.pathname = "/dashboard/atlas";
+    window.localStorage.clear();
 
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
@@ -251,6 +257,66 @@ describe("web routes", () => {
       expect(apiMocks.loginDashboard).toHaveBeenCalledWith("admin", "secret-pass");
       expect(navigationMocks.assignLocation).toHaveBeenCalledWith(expected);
     });
+  });
+
+  it("lands on the last opened project after a login without a return path", async () => {
+    window.localStorage.setItem("openwish:last-project-slug", "atlas");
+    window.history.replaceState({}, "", "/login");
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(navigationMocks.assignLocation).toHaveBeenCalledWith("/dashboard/atlas");
+    });
+  });
+
+  it("lands on the projects list after login when no project was opened yet", async () => {
+    window.history.replaceState({}, "", "/login");
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(navigationMocks.assignLocation).toHaveBeenCalledWith("/dashboard/projects");
+    });
+  });
+
+  it("remembers the project opened in the dashboard and forgets a deleted one", () => {
+    routeState.params = { slug: "atlas" };
+    const { unmount } = render(<DashboardSlugRouteLayout />);
+    expect(window.localStorage.getItem("openwish:last-project-slug")).toBe("atlas");
+    unmount();
+
+    routeState.params = { slug: "gone" };
+    routeState.pathname = "/dashboard/gone";
+    window.localStorage.setItem("openwish:last-project-slug", "gone");
+    render(<DashboardSlugRouteLayout />);
+    expect(window.localStorage.getItem("openwish:last-project-slug")).toBeNull();
+  });
+
+  it("keeps the last opened project selected on the projects page", () => {
+    sessionMocks.useDashboardSession.mockReturnValue({
+      ...defaultSession,
+      projects: [
+        ...defaultSession.projects,
+        {
+          apiKey: "ow_api_beta",
+          createdAt: "2026-04-10T08:00:00.000Z",
+          name: "Beta",
+          slug: "beta",
+          watermarkEnabled: false,
+        },
+      ],
+    });
+    window.localStorage.setItem("openwish:last-project-slug", "beta");
+
+    render(<DashboardProjectsPage />);
+
+    expect(screen.getByRole("link", { name: "Board" }).getAttribute("href")).toBe(
+      "/dashboard/beta",
+    );
+    expect(screen.getByRole("link", { name: "Bugs" }).getAttribute("href")).toBe(
+      "/dashboard/beta/bugs",
+    );
   });
 
   it("renders the projects view and creates a new board", async () => {

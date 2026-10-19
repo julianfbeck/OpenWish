@@ -26,6 +26,7 @@ import {
   deleteAdminProject,
 } from "#/lib/api";
 import { formatDate } from "#/lib/format";
+import { forgetLastProjectSlug, readLastProjectSlug } from "#/lib/last-project";
 import { assignLocation } from "#/lib/navigation";
 import { useDashboardSession } from "#/lib/use-dashboard-session";
 
@@ -51,7 +52,10 @@ export function DashboardProjectsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
 
-  const activeProject = useMemo(() => projects[0], [projects]);
+  const activeProject = useMemo(() => {
+    const lastSlug = readLastProjectSlug();
+    return projects.find((project) => project.slug === lastSlug) ?? projects[0];
+  }, [projects]);
 
   return (
     <DashboardChrome
@@ -165,6 +169,7 @@ export function DashboardProjectsPage() {
                               setError(null);
                               try {
                                 await deleteAdminProject(project.slug);
+                                forgetLastProjectSlug(project.slug);
                                 await reloadProjects();
                               } catch (nextError) {
                                 setError(

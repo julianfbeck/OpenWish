@@ -22,6 +22,7 @@ import {
   updateAdminWish,
   updateWishState,
 } from "#/lib/api";
+import { forgetLastProjectSlug, rememberLastProjectSlug } from "#/lib/last-project";
 import { assignLocation } from "#/lib/navigation";
 import { useDashboardSession } from "#/lib/use-dashboard-session";
 import { cn } from "#/lib/utils";
@@ -59,7 +60,7 @@ function buildCsv(data: AdminProjectResponse) {
     .join("\n");
 }
 
-function DashboardSlugRouteLayout() {
+export function DashboardSlugRouteLayout() {
   const { slug } = Route.useParams();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -74,6 +75,19 @@ function DashboardSlugRouteLayout() {
         ? "settings"
         : "board";
   const projectName = projects.find((project) => project.slug === slug)?.name;
+
+  // Remember the project once the session confirms it exists, so the projects
+  // page and the next login reopen it. A stale slug (deleted project) is dropped.
+  useEffect(() => {
+    if (projects.length === 0) {
+      return;
+    }
+    if (projects.some((project) => project.slug === slug)) {
+      rememberLastProjectSlug(slug);
+    } else {
+      forgetLastProjectSlug(slug);
+    }
+  }, [projects, slug]);
 
   // The chrome (sidebar + project switcher) is rendered once here and stays
   // mounted while the <Outlet/> swaps tab content, so navigation no longer

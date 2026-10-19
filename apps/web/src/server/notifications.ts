@@ -126,6 +126,42 @@ export async function sendBugNotification(
   );
 }
 
+export async function sendCommentNotification(
+  env: Bindings,
+  project: ProjectRow,
+  comment: {
+    kind: "wish" | "bug";
+    title: string;
+    description: string;
+    userUUID: string;
+  },
+) {
+  if (!project.notification_email) {
+    return;
+  }
+
+  const isBug = comment.kind === "bug";
+  const link = isBug
+    ? `${dashboardBase(env)}/dashboard/${project.slug}/bugs`
+    : `${dashboardBase(env)}/dashboard/${project.slug}`;
+
+  await send(
+    env,
+    project.notification_email,
+    `[${project.name}] New comment on "${comment.title}"`,
+    [
+      `A new comment was posted on a ${isBug ? "bug report" : "feature request"} in ${project.name}.`,
+      ``,
+      `${isBug ? "Bug report" : "Feature request"}: ${comment.title}`,
+      `Comment: ${truncate(comment.description, 1_000)}`,
+      `Commenter: ${comment.userUUID}`,
+      ``,
+      `Open it in the dashboard:`,
+      link,
+    ].join("\n"),
+  );
+}
+
 // ── Reporter notifications (emails to the end user who submitted feedback) ──
 //
 // These go through the Cloudflare Email Service HTTP API (see ./email), because

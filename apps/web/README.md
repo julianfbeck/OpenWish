@@ -24,7 +24,7 @@ That's it — no Docker, no Postgres, no separate Node/Bun host. The whole stack
 | Wishes / bugs / users / comments / projects / passkeys | D1 SQLite database | `DB` |
 | Bug screenshots | R2 bucket | `BUGS_BUCKET` |
 | Rate-limit counters (fixed-window) | Workers KV | `RATE_LIMIT_KV` |
-| New-wish / new-bug / test notifications (to **you**, the admin) | Email Routing send binding | `NOTIFICATION_EMAIL` |
+| New-wish / new-bug / new-comment / test notifications (to **you**, the admin) | Email Routing send binding | `NOTIFICATION_EMAIL` |
 | Reporter notifications (to **the user** — admin reply / "fixed" / "implemented") | Cloudflare Email Service (HTTP API) | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_EMAIL_API_TOKEN` |
 | Dashboard session secret, admin password, passkey RP config | Worker secrets / vars | see below |
 
@@ -161,7 +161,7 @@ pnpm run deploy
 
 When an admin **replies to** or marks a bug **fixed** / a feature request **implemented** in the dashboard, OpenWish emails the person who reported it. These are separate from the admin notifications above:
 
-- **Admin notifications** (new wish/bug landed) go to your own verified inbox over Email Routing (`NOTIFICATION_EMAIL`).
+- **Admin notifications** (new wish/bug or user comment landed) go to your own verified inbox over Email Routing (`NOTIFICATION_EMAIL`).
 - **Reporter notifications** go to arbitrary end-user addresses, which Email Routing cannot do — so they use **[Cloudflare Email Service](https://developers.cloudflare.com/email-routing/email-workers/)** (the transactional HTTP API, public beta).
 
 Prerequisites:

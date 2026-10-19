@@ -13,6 +13,7 @@ import {
   loginDashboard,
   verifyPasskeyLogin,
 } from "#/lib/api";
+import { lastProjectHomePath } from "#/lib/last-project";
 import { assignLocation, safeLoginReturnPath } from "#/lib/navigation";
 
 export const Route = createFileRoute("/login")({
@@ -46,7 +47,8 @@ export function LoginPage() {
   function postLoginRedirect() {
     const search = new URLSearchParams(window.location.search);
     const next = search.get("next");
-    assignLocation(safeLoginReturnPath(next));
+    // Without an explicit return path, reopen the project used last.
+    assignLocation(next ? safeLoginReturnPath(next) : lastProjectHomePath());
   }
 
   async function handlePasskeyLogin() {
