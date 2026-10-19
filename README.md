@@ -100,6 +100,10 @@ The Worker implements a stateless Streamable HTTP MCP server at
   as the MCP URL and select OAuth. Sign in with your existing OpenWish dashboard
   login/passkey, choose existing projects and approve permissions. Reading is
   the default; editing and destructive actions require additional permissions.
+  Access tokens expire after 15 minutes. The separate, unchecked **Keep this
+  connection until I revoke it** option permits renewable access without a fixed
+  grant expiry. It does not add editing permissions. Existing finite grants keep
+  their original expiry; persistent access requires fresh consent.
   Manage or revoke connections at **Projects → Agent access (MCP) → Manage OAuth
   access**. Automatic client registration handles OAuth client setup. Refresh
   tokens rotate after each use; reusing a consumed token revokes the connection
@@ -113,6 +117,15 @@ The tools cover project settings and analytics, feature and issue management,
 state transitions, reporter replies, merges, private notes, screenshots, and
 test email. OAuth grants apply to selected immutable project IDs; they cannot
 create new projects. Replies and resolution changes can email reporters.
+
+For a read-only ChatGPT connection, use `mcp:read offline_access` if its OAuth
+settings offer **Base scopes**, then explicitly approve the connection lifetime
+in OpenWish. The lifetime checkbox can also permit refresh tokens when ChatGPT
+requests only `mcp:read`; automatic refresh in that case still needs an approved
+live expiry test. A grant without a fixed expiry does not guarantee uninterrupted
+access: client credentials, metadata availability, host policies, and token
+replay can still require reconnecting. See the [OAuth lifecycle and client
+limits](apps/web/README.md#oauth-access-for-chatgpt).
 
 Example configuration for a client using the global key:
 

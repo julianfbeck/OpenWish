@@ -94,6 +94,22 @@ export class DurableOAuthStorage {
     let last: string | undefined;
     for (const [key, record] of records) {
       last = key;
+      if (record.expiresAt === undefined && key.startsWith("oauth:ui:used-refresh:")) {
+        // Indefinite grants need replay history for their entire lifetime. Once
+        // revoked, their markers can be removed by this bounded, serialized sweep.
+        let marker: { userId?: unknown; grantId?: unknown; refreshLifetime?: unknown };
+        try { marker = JSON.parse(record.value); } catch { continue; }
+        if (!marker || typeof marker !== "object") continue;
+        if (marker.refreshLifetime === "until-revoked" &&
+          typeof marker.userId === "string" && typeof marker.grantId === "string") {
+          const grant = await this.storage.get<StoredValue>(`oauth:grant:${marker.userId}:${marker.grantId}`);
+          // A storage failure propagates; it must never be treated as revocation.
+          if (!grant || (grant.expiresAt !== undefined && grant.expiresAt * 1000 <= now)) {
+            await this.storage.delete(key);
+            continue;
+          }
+        }
+      }
       if (record.expiresAt === undefined) continue;
       if (record.expiresAt * 1000 <= now) await this.storage.delete(key);
       else next = Math.min(next, Math.ceil(record.expiresAt * 1000));

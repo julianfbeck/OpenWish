@@ -287,12 +287,22 @@ client registration handles the OAuth client setup. Sign in using the existing
 OpenWish dashboard login/passkey and approve the client, selected existing
 projects, and permissions shown by the consent page.
 
+For read-only access, if ChatGPT's OAuth settings offer **Base scopes**, use
+`mcp:read offline_access`. Request `mcp:write` or `mcp:admin` only when those
+operations are needed. OpenWish presents a separate, unchecked **Keep this
+connection until I revoke it** option on fresh consent pages. Select it explicitly
+to permit renewable access; it does not add tool permissions or projects. This
+option is also available when ChatGPT requests only `mcp:read`, without adding an
+unrequested `offline_access` scope. Issuing a refresh token in that case is
+supported by OpenWish's OAuth implementation, but ChatGPT's automatic refresh
+behavior for that scope combination requires an approved live expiry test.
+
 | Scope | Permission for selected projects |
 | --- | --- |
 | `mcp:read` | Default. Read project metadata, analytics, features, issues, private notes, and screenshots. Issue data can include reporter contact and diagnostic information. |
 | `mcp:write` | Create/edit feedback, change workflow state, add notes, update project settings, reply to reporters, and send test emails. Replies and resolution changes can send reporter emails. |
 | `mcp:admin` | Perform administrative/destructive operations on selected existing projects, including merging or deleting feedback and deleting projects. |
-| `offline_access` | Optional. Request refresh access so the connection can continue after the current access token expires. |
+| `offline_access` | Optional client request for refresh access. The owner must explicitly approve the connection lifetime; this scope adds no tool permissions. |
 
 Grants store immutable project IDs. Recreating a deleted project's slug does not
 inherit its grants. OAuth never exposes project creation: that global operation
@@ -300,17 +310,33 @@ returns new SDK/admin credentials. The global API-key path retains its existing
 cross-project behavior.
 
 Authorization codes and pending consent expire after 10 minutes. Access tokens
-expire after 15 minutes. Refresh access has a fixed 30-day grant lifetime and is
-issued only when the client requests `offline_access` and the owner explicitly
-approves it. Each refresh token can be used once and is replaced on a successful
-refresh. OpenWish enforces strict rotation over the OAuth provider: reusing a
-consumed refresh token returns `invalid_grant` and revokes the entire grant.
-There is no retry grace for a consumed token. The client must reconnect and
-approve access again after replay revocation; rotation does not extend the
-original grant lifetime.
-Review and revoke access at `/oauth/grants` while signed in to the dashboard.
+expire after 15 minutes. Fresh, explicit lifetime approval creates renewable
+access without a fixed grant expiry, until the owner revokes it. Leaving the
+option unchecked creates no refresh access. Previously issued finite grants
+retain their original expiry, and consent pages started under the previous
+30-day policy still issue finite grants. Existing grants are never silently
+upgraded; persistent access requires a new consent flow.
+
+Each refresh token can be used once and is replaced on a successful refresh.
+OpenWish enforces strict rotation over the OAuth provider: reusing a consumed
+refresh token returns `invalid_grant` and revokes the entire grant. There is no
+retry grace for a consumed token, including after a lost refresh response. The
+client must reconnect and approve access again after replay revocation.
+Review each connection's duration and revoke access at `/oauth/grants` while
+signed in to the dashboard.
 Consent and revocation use the dashboard cookie, browser-bound CSRF protection,
 and same-origin POSTs.
+
+An until-revoked grant describes OpenWish's authorization policy, not a promise
+of uninterrupted client access. DCR client registrations have a 90-day TTL,
+renewed by successful token requests after half their lifetime; long inactivity
+can expire the registration and require reconnecting. CIMD clients use remote
+metadata instead of a stored registration, so metadata and signing keys must
+remain available where required. Client behavior, host policies, revocation,
+and refresh-token replay can also interrupt access. OpenAI recommends keeping
+registered clients valid while a connection is used and planning for refresh
+and revocation; its public MCP guidance does not guarantee indefinite automatic
+refresh. See the [OpenAI authentication guide](https://developers.openai.com/plugins/build/auth).
 
 Discovery is served at `/.well-known/oauth-protected-resource/mcp` and
 `/.well-known/oauth-authorization-server`. The authorization, token, registration,

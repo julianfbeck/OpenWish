@@ -43,7 +43,9 @@ export function McpAccessPanel() {
         </div>
 
         <p className="text-xs leading-relaxed text-neutral-400">
-          For ChatGPT, connect the MCP URL using OAuth, sign in, and choose projects and permissions.{" "}
+          For ChatGPT, connect the MCP URL using OAuth, sign in, and choose projects and permissions.
+          Select “Keep this connection until I revoke it” to allow automatic renewal without a fixed expiration.
+          This keeps your selected project permissions; access tokens still expire after 15 minutes.{" "}
           <a href="/oauth/grants" className="text-neutral-200 underline underline-offset-2">Manage OAuth access</a>.
         </p>
 

@@ -21,7 +21,7 @@ import type { Bindings } from "./types";
 
 export const OPENWISH_OAUTH_SCOPES = ["mcp:read", "mcp:write", "mcp:admin", "offline_access"];
 const ACCESS_SECONDS = 900;
-const REFRESH_SECONDS = 30 * 24 * 60 * 60;
+const LEGACY_REFRESH_SECONDS = 30 * 24 * 60 * 60;
 const CONSENT_SECONDS = 600;
 const BODY_DEADLINE_MS = 5000;
 const JWT_CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
@@ -30,15 +30,18 @@ const scopeLabels: Record<string, string> = {
   "mcp:read": "Read feedback, bugs, screenshots and analytics",
   "mcp:write": "Create or update feedback, replies, notes and project settings; send emails",
   "mcp:admin": "Delete feedback or selected projects; merge features",
-  offline_access: "Keep access for up to 30 days without signing in again",
+  offline_access: "Keep this connection until I revoke it (offline access)",
 };
 
 type OAuthEnv = Bindings & { OAUTH_KV: KVNamespace; OAUTH_PROVIDER?: OAuthHelpers };
 type ProjectChoice = { id: string; name: string; slug: string };
-type ConsentPolicy = { subject: string; scopes: string[]; projectIds: string[] };
+type ConsentPolicy = { subject: string; scopes: string[]; projectIds: string[]; allowsPersistentRefresh?: true };
 type GrantPolicy = { subject: string; grantIds: string[] };
-type OAuthProps = { subject: string; projectIds: string[]; scopes: string[] };
-type UsedRefresh = { clientId: string; userId: string; grantId: string; resource: string; expiresAt: number };
+type OAuthProps = { subject: string; projectIds: string[]; scopes: string[]; refreshLifetime?: "until-revoked" };
+type UsedRefresh = {
+  clientId: string; userId: string; grantId: string; resource: string;
+  expiresAt?: number; refreshLifetime?: "until-revoked";
+};
 export type OAuthMcpHandler = (
   request: Request, env: Bindings, context: ExecutionContext, access: McpAccess,
 ) => Promise<Response>;
@@ -204,6 +207,9 @@ function consentPage(details: ConsentDescription, handle: string, choices: Proje
     <p>You are signed in as an OpenWish administrator. Choose the existing projects this application may access. Future projects are excluded.</p>
     <form method="post" action="/oauth/authorize"><input type="hidden" name="handle" value="${escape(handle)}">
     <fieldset><legend>Permissions</legend>${scopes.map((scope) => `<label><input type="checkbox" name="scope" value="${escape(scope)}"${scope === "mcp:read" ? " checked" : ""}> ${escape(scopeLabels[scope])}</label>`).join("")}</fieldset>
+    <fieldset><legend>Connection duration</legend>
+    ${scopes.includes("offline_access") ? "<p>The optional offline access permission above allows automatic renewal until you revoke this connection.</p>" : '<label><input type="checkbox" name="persistent" value="until-revoked"> Keep this connection until I revoke it (offline access)</label>'}
+    <p>Automatic renewal has no fixed expiration. Access tokens still expire after 15 minutes, and access remains limited to your selected projects and permissions. You can revoke the connection at any time in Manage OAuth access. Without automatic renewal, this authorization expires after 15 minutes.</p></fieldset>
     <fieldset><legend>Projects — select at least one</legend>${choices.map((project) => `<label><input type="checkbox" name="project" value="${escape(project.id)}"> ${escape(project.name)} <small>${escape(project.slug)}</small></label>`).join("")}</fieldset>
     <p>New project creation and API credentials are excluded. Write permission can send replies and emails; administrator permission can delete selected projects.</p>
     <button name="decision" value="approve">Allow selected access</button><button name="decision" value="deny">Deny</button></form>`;
@@ -231,7 +237,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
       const choices = await projects(env);
       const consent = await oauth.beginConsent(authRequest);
       await env.OAUTH_KV.put(`ui:consent:${await digest(consent.handle)}`, JSON.stringify({
-        subject, scopes, projectIds: choices.map((project) => project.id),
+        subject, scopes, projectIds: choices.map((project) => project.id), allowsPersistentRefresh: true,
       } satisfies ConsentPolicy), { expirationTtl: CONSENT_SECONDS });
       return html(consentPage(details, consent.handle, choices, scopes), 200, consent.headers, details.redirectUri);
     } catch (error) {
@@ -244,7 +250,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
   if (request.method !== "POST") return invalid("Use GET or POST.", 405);
   if (request.headers.get("Origin") !== origin) return invalid("The request must originate from this OpenWish dashboard.", 403);
   try {
-    const form = await readForm(request, ["handle", "decision", "scope", "project"]);
+    const form = await readForm(request, ["handle", "decision", "scope", "project", "persistent"]);
     const handle = one(form, "handle");
     const policyKey = `ui:consent:${await digest(handle)}`;
     const policy = await env.OAUTH_KV.get<ConsentPolicy>(policyKey, "json");
@@ -258,6 +264,13 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
     if (decision !== "approve") return invalid();
     const scopes = [...new Set(form.getAll("scope"))];
     const projectIds = [...new Set(form.getAll("project"))];
+    const persistent = form.getAll("persistent");
+    if (persistent.length > 1 || persistent.some((value) => value !== "until-revoked") ||
+      (persistent.length && policy.allowsPersistentRefresh !== true)) return invalid();
+    // This server-owned policy distinguishes fresh, explicit indefinite consent
+    // from an older form that only offered a 30-day offline authorization.
+    const refreshLifetime = policy.allowsPersistentRefresh === true &&
+      (persistent.length === 1 || scopes.includes("offline_access")) ? "until-revoked" as const : undefined;
     const currentProjects = await projects(env);
     if (!scopes.includes("mcp:read") || scopes.some((scope) => !policy.scopes.includes(scope)) ||
       !projectIds.length || projectIds.some((id) => !policy.projectIds.includes(id) || !currentProjects.some((project) => project.id === id))) {
@@ -268,8 +281,9 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
     const { redirectTo } = await oauth.completeAuthorization({
       request: approved.request, userId: subject, scope: scopes,
       metadata: { clientName: (await oauth.describeConsent(approved.request)).clientName,
-        projectNames: currentProjects.filter((project) => projectIds.includes(project.id)).map((project) => project.name), projectIds },
-      props: { subject, projectIds, scopes } satisfies OAuthProps,
+        projectNames: currentProjects.filter((project) => projectIds.includes(project.id)).map((project) => project.name), projectIds,
+        ...(refreshLifetime ? { refreshLifetime } : {}) },
+      props: { subject, projectIds, scopes, ...(refreshLifetime ? { refreshLifetime } : {}) } satisfies OAuthProps,
     });
     approved.headers.set("Location", redirectTo);
     return new Response(null, { status: 302, headers: approved.headers });
@@ -304,7 +318,10 @@ async function grantPage(request: Request, env: OAuthEnv, origin: string) {
     return html(`<h1>MCP connections</h1><p>Revoke access for applications you previously approved. Existing API-key access is managed separately.</p>${grants.map((grant) => {
       const name = typeof grant.metadata?.clientName === "string" ? grant.metadata.clientName : grant.clientId;
       const projectNames = Array.isArray(grant.metadata?.projectNames) ? grant.metadata.projectNames.filter((name: unknown) => typeof name === "string").join(", ") : "Selected projects";
-      return `<section><h2>${escape(name)}</h2><p>${escape(projectNames)}</p><p>${escape(grant.scope.join(", "))}</p><small>Client: ${escape(grant.clientId)}</small><form method="post" action="/oauth/grants"><input type="hidden" name="csrf" value="${escape(csrf)}"><input type="hidden" name="grantId" value="${escape(grant.id)}"><button>Revoke access</button></form></section>`;
+      const duration = grant.metadata?.refreshLifetime === "until-revoked"
+        ? "Automatic renewal until revoked — no fixed expiration. Access tokens last 15 minutes."
+        : typeof grant.expiresAt === "number" ? `Expires at ${new Date(grant.expiresAt * 1000).toISOString()}.` : "Existing authorization.";
+      return `<section><h2>${escape(name)}</h2><p>${escape(projectNames)}</p><p>${escape(grant.scope.join(", "))}</p><p>${escape(duration)}</p><small>Client: ${escape(grant.clientId)}</small><form method="post" action="/oauth/grants"><input type="hidden" name="csrf" value="${escape(csrf)}"><input type="hidden" name="grantId" value="${escape(grant.id)}"><button>Revoke access</button></form></section>`;
     }).join("") || "<p>No active connections.</p>"}`, 200, headers);
   }
   if (request.method !== "POST") return invalid("Use GET or POST.", 405);
@@ -380,7 +397,14 @@ function isUsedRefresh(value: unknown, resource: string): value is UsedRefresh {
   return typeof marker.clientId === "string" && !!marker.clientId &&
     typeof marker.userId === "string" && !!marker.userId &&
     typeof marker.grantId === "string" && !!marker.grantId &&
-    marker.resource === resource && Number.isInteger(marker.expiresAt) && marker.expiresAt! > Math.floor(Date.now() / 1000);
+    marker.resource === resource && (marker.expiresAt === undefined
+      ? marker.refreshLifetime === "until-revoked"
+      : Number.isInteger(marker.expiresAt) && marker.expiresAt > Math.floor(Date.now() / 1000));
+}
+
+function hasPersistentRefresh(props: unknown): props is { refreshLifetime: "until-revoked" } {
+  return !!props && typeof props === "object" &&
+    (props as Partial<OAuthProps>).refreshLifetime === "until-revoked";
 }
 
 /** All calls returned by this factory share one queue, including the real library's
@@ -397,7 +421,9 @@ export function createOpenWishOAuthProvider(
     authorizeEndpoint: `${origin}/oauth/authorize`,
     tokenEndpoint: `${origin}/oauth/token`,
     clientRegistrationEndpoint: `${origin}/oauth/register`,
-    accessTokenTTL: ACCESS_SECONDS, refreshTokenTTL: REFRESH_SECONDS,
+    // Explicit undefined overrides the provider's default 30-day deadline.
+    // Only fresh, server-recorded consent may select this indefinite lifetime.
+    accessTokenTTL: ACCESS_SECONDS, refreshTokenTTL: undefined,
     clientRegistrationTTL: 90 * 24 * 60 * 60,
     scopesSupported: OPENWISH_OAUTH_SCOPES,
     requiredScopes: ["mcp:read"],
@@ -406,7 +432,8 @@ export function createOpenWishOAuthProvider(
     onError: () => undefined,
     async tokenExchangeCallback(options) {
       if (options.grantType === "authorization_code") {
-        return { refreshTokenTTL: options.scope.includes("offline_access") ? REFRESH_SECONDS : 0 };
+        if (hasPersistentRefresh(options.props)) return undefined;
+        return { refreshTokenTTL: options.scope.includes("offline_access") ? LEGACY_REFRESH_SECONDS : 0 };
       }
       if (options.grantType === "refresh_token") {
         // The callback runs only after the provider verifies the token, client,
@@ -420,15 +447,19 @@ export function createOpenWishOAuthProvider(
         }
         // Strong DO storage plus the request queue makes this reservation single
         // use. Failures after reservation require reconnecting, never a grace retry.
-        const grant = await storage.get<{ expiresAt?: number }>(`grant:${options.userId}:${options.grantId}`, "json");
-        if (!grant || !Number.isInteger(grant.expiresAt) || grant.expiresAt! <= Math.floor(Date.now() / 1000) || options.resource !== `${origin}/mcp`) {
+        const grant = await storage.get<{ expiresAt?: number; metadata?: { refreshLifetime?: string } }>(`grant:${options.userId}:${options.grantId}`, "json");
+        const validLifetime = grant && (grant.expiresAt === undefined
+          ? hasPersistentRefresh(options.props) && grant.metadata?.refreshLifetime === "until-revoked"
+          : Number.isInteger(grant.expiresAt) && grant.expiresAt > Math.floor(Date.now() / 1000));
+        if (!validLifetime || !grant || options.resource !== `${origin}/mcp`) {
           throw new OAuthError("invalid_grant", { description: "Refresh authorization could not be verified." });
         }
         const marker: UsedRefresh = {
           clientId: options.clientId, userId: options.userId, grantId: options.grantId,
-          resource: options.resource, expiresAt: grant.expiresAt!,
+          resource: options.resource, ...(grant.expiresAt === undefined
+            ? { refreshLifetime: "until-revoked" as const } : { expiresAt: grant.expiresAt }),
         };
-        await storage.put(key, JSON.stringify(marker), { expiration: marker.expiresAt });
+        await storage.put(key, JSON.stringify(marker), marker.expiresAt === undefined ? undefined : { expiration: marker.expiresAt });
       }
       return undefined;
     },

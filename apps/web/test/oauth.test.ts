@@ -42,6 +42,13 @@ type Consent = {
   handle: string;
   cookie: string;
 };
+type GrantOptions = {
+  requestedScopes?: string;
+  scopes?: string[];
+  projects?: string[];
+  persistent?: boolean;
+  legacyConsent?: boolean;
+};
 
 function project(id: string, slug: string, name: string): ProjectRow {
   return {
@@ -122,10 +129,14 @@ async function fixture(
     OPENWISH_DASHBOARD_SESSION_SECRET: "test-only-session-signing-secret",
     OPENWISH_MCP_OAUTH_ORIGIN: ORIGIN,
   };
+  let verifiedProps: Record<string, unknown> | undefined;
   const provider = createOpenWishOAuthProvider(
     env,
     storage as unknown as KVNamespace,
-    options.realMcp ? undefined : options.handler ?? (async (_request, _env, _context, access) => Response.json(access)),
+    options.realMcp ? undefined : options.handler ?? (async (_request, _env, context, access) => {
+      verifiedProps = structuredClone((context as unknown as { props: Record<string, unknown> }).props);
+      return Response.json(access);
+    }),
   );
   const session = await createDashboardSessionToken(env, "test-admin");
   expect(session).toBeTruthy();
@@ -196,6 +207,7 @@ async function fixture(
     handle?: string;
     decision?: string;
     extra?: Record<string, string>;
+    persistent?: boolean;
   } = {}) {
     const values = new URLSearchParams({
       handle: options.handle ?? page.handle,
@@ -204,14 +216,29 @@ async function fixture(
     });
     for (const scope of options.scopes ?? ["mcp:read"]) values.append("scope", scope);
     for (const id of options.projects ?? [STUDIO]) values.append("project", id);
+    if (options.persistent) values.append("persistent", "until-revoked");
     return formRequest("/oauth/authorize", values, {
       Origin: options.origin ?? ORIGIN,
       Cookie: options.cookie ?? page.cookie,
     });
   }
 
-  async function code(client: Client, options: { requestedScopes?: string; scopes?: string[]; projects?: string[] } = {}) {
+  async function legacyPendingConsent(page: Consent) {
+    // Model a consent transaction saved by the previous server version, while
+    // retaining its actual browser binding and expiry in the synthetic store.
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(page.handle));
+    const hashed = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    const key = `ui:consent:${hashed}`;
+    const stored = storage.store.get(key);
+    expect(stored).toBeTruthy();
+    const policy = JSON.parse(stored!.value) as Record<string, unknown>;
+    delete policy.allowsPersistentRefresh;
+    storage.store.set(key, { ...stored!, value: JSON.stringify(policy) });
+  }
+
+  async function code(client: Client, options: GrantOptions = {}) {
     const page = await consent(client, { scope: options.requestedScopes ?? "mcp:read" });
+    if (options.legacyConsent) await legacyPendingConsent(page);
     const response = await approve(page, options);
     expect(response.status).toBe(302);
     const location = new URL(response.headers.get("location")!);
@@ -235,7 +262,7 @@ async function fixture(
     }));
   }
 
-  async function grant(options: { requestedScopes?: string; scopes?: string[]; projects?: string[] } = {}) {
+  async function grant(options: GrantOptions = {}) {
     const client = await register();
     const authorizationCode = await code(client, options);
     const response = await exchange(client, authorizationCode);
@@ -276,7 +303,9 @@ async function fixture(
     });
   }
 
-  return { env, storage, db, provider, request, formRequest, register, authorizationUrl, consent, approve, code, exchange, grant, access, refresh, revoke, basicToken, dashboardCookie, session };
+  return { env, storage, db, provider, request, formRequest, register, authorizationUrl, consent, approve, legacyPendingConsent, code, exchange, grant, access, refresh, revoke, basicToken, dashboardCookie, session,
+    get verifiedProps() { return verifiedProps; },
+  };
 }
 
 async function signedClientFixture() {
@@ -1032,13 +1061,33 @@ describe("OpenWish MCP OAuth token lifecycle", () => {
     expect((await f.access(next.access_token)).status).toBe(200);
   });
 
-  it("expires long-lived refresh grants at the configured finite lifetime", async () => {
-    const f = await fixture();
-    const { client, token } = await f.grant({ requestedScopes: "mcp:read offline_access", scopes: ["mcp:read", "offline_access"] });
+  it("retains the original finite lifetime of a legacy offline grant across refreshes", async () => {
     const now = Date.now();
-    vi.spyOn(Date, "now").mockReturnValue(now + 31 * 24 * 60 * 60 * 1000);
-    expect((await f.refresh(client, token.refresh_token!)).status).toBeGreaterThanOrEqual(400);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const f = await fixture();
+    const { client, token } = await f.grant({ requestedScopes: "mcp:read offline_access", scopes: ["mcp:read", "offline_access"], legacyConsent: true });
+    const [key, stored] = [...f.storage.store.entries()].find(([key]) => key.startsWith("grant:"))!;
+    const initialGrant = JSON.parse(stored.value);
+    expect(initialGrant.expiresAt).toBe(Math.floor(now / 1000) + 30 * 24 * 60 * 60);
+    expect(initialGrant.metadata).not.toHaveProperty("refreshLifetime");
+    expect(stored.expiresAtMs).toBe(initialGrant.expiresAt * 1000);
+    expect((await f.access(token.access_token)).status).toBe(200);
+    expect(f.verifiedProps).not.toHaveProperty("refreshLifetime");
+    clock.mockReturnValue(now + 15 * 24 * 60 * 60 * 1000);
+    const renewed = await f.refresh(client, token.refresh_token!);
+    expect(renewed.status).toBe(200);
+    const next = await renewed.json() as TokenResponse;
+    expect(next.expires_in).toBe(900);
+    expect(JSON.parse(f.storage.store.get(key)!.value).expiresAt).toBe(initialGrant.expiresAt);
+    expect(f.storage.store.get(key)!.expiresAtMs).toBe(initialGrant.expiresAt * 1000);
+    expect((await f.access(next.access_token)).status).toBe(200);
+    expect(f.verifiedProps).not.toHaveProperty("refreshLifetime");
+    clock.mockReturnValue(now + 31 * 24 * 60 * 60 * 1000);
+    const expired = await f.refresh(client, next.refresh_token!);
+    expect(expired.status).toBe(400);
+    expect(await expired.json()).toMatchObject({ error: "invalid_grant" });
     expect((await f.access(token.access_token)).status).toBe(401);
+    expect((await f.access(next.access_token)).status).toBe(401);
   });
 
   it("requires authenticated, origin-checked CSRF consent to revoke grants in the dashboard", async () => {
@@ -1102,6 +1151,230 @@ describe("OpenWish MCP OAuth token lifecycle", () => {
     const revoked = await revocation;
     expect(revoked.status).toBe(200);
     expect((await f.access(token.access_token)).status).toBe(401);
+  });
+});
+
+describe("explicit persistent OAuth connections", () => {
+  it("offers an unchecked persistence choice for read-only consent and issues no refresh token by default", async () => {
+    const f = await fixture();
+    const client = await f.register();
+    const page = await f.consent(client);
+    expect(inputs(page.html, "scope").map((tag) => attribute(tag, "value"))).toEqual(["mcp:read"]);
+    const persistent = inputs(page.html, "persistent");
+    expect(persistent).toHaveLength(1);
+    expect(attribute(persistent[0]!, "type")).toBe("checkbox");
+    expect(attribute(persistent[0]!, "value")).toBe("until-revoked");
+    expect(persistent[0]).not.toMatch(/\bchecked\b/);
+    expect(decodeHtml(page.html)).toContain("until I revoke it");
+    const approved = await f.approve(page);
+    expect(approved.status).toBe(302);
+    const response = await f.exchange(client, new URL(approved.headers.get("location")!).searchParams.get("code")!);
+    expect(response.status).toBe(200);
+    const token = await response.json() as TokenResponse;
+    expect(token.scope).toBe("mcp:read");
+    expect(token.expires_in).toBe(900);
+    expect(token.refresh_token).toBeUndefined();
+    expect((await f.access(token.access_token)).status).toBe(200);
+    expect(f.verifiedProps).not.toHaveProperty("refreshLifetime");
+  });
+
+  it("issues a persistent read-only grant without silently adding offline or wider scopes", async () => {
+    const f = await fixture();
+    const { token } = await f.grant({ persistent: true, projects: [ATLAS] });
+    expect(token.refresh_token).toBeTruthy();
+    expect(token.scope).toBe("mcp:read");
+    expect(token.expires_in).toBe(900);
+    const response = await f.access(token.access_token);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ projectIds: [ATLAS], scopes: ["mcp:read"] });
+    expect(f.verifiedProps).toMatchObject({ projectIds: [ATLAS], scopes: ["mcp:read"], refreshLifetime: "until-revoked" });
+    const stored = [...f.storage.store.entries()].find(([key]) => key.startsWith("grant:"))![1];
+    expect(JSON.parse(stored.value)).toMatchObject({ scope: ["mcp:read"], metadata: { refreshLifetime: "until-revoked", projectIds: [ATLAS] } });
+    expect(JSON.parse(stored.value)).not.toHaveProperty("expiresAt");
+    expect(stored.expiresAtMs).toBeNull();
+    const page = await f.request("/oauth/grants", { headers: { Cookie: f.dashboardCookie } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(decodeHtml(html)).toContain("until revoked");
+    expect(html).toContain("15 minutes");
+    expect(html).not.toContain(token.access_token);
+    expect(html).not.toContain(token.refresh_token);
+  });
+
+  it("keeps persistent renewal subject to the independent 15-minute access-token expiry", async () => {
+    const f = await fixture();
+    const { client, token } = await f.grant({ persistent: true });
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 901_000);
+    expect((await f.access(token.access_token)).status).toBe(401);
+    const refreshed = await f.refresh(client, token.refresh_token!);
+    expect(refreshed.status).toBe(200);
+    const next = await refreshed.json() as TokenResponse;
+    expect(next.expires_in).toBe(900);
+    expect((await f.access(next.access_token)).status).toBe(200);
+  });
+
+  it("only treats requested offline access as persistent when the user approves that unchecked permission", async () => {
+    const f = await fixture();
+    const client = await f.register();
+    const page = await f.consent(client, { scope: "mcp:read offline_access" });
+    const offline = inputs(page.html, "scope").find((tag) => attribute(tag, "value") === "offline_access");
+    expect(offline).toBeTruthy();
+    expect(offline).not.toMatch(/\bchecked\b/);
+    expect(inputs(page.html, "persistent")).toHaveLength(0);
+    expect(decodeHtml(page.html)).toContain("until I revoke it");
+    const declinedOffline = await f.grant({ requestedScopes: "mcp:read offline_access", scopes: ["mcp:read"] });
+    expect(declinedOffline.token.refresh_token).toBeUndefined();
+    expect(declinedOffline.token.scope).toBe("mcp:read");
+    const approvedOffline = await f.grant({ requestedScopes: "mcp:read offline_access", scopes: ["mcp:read", "offline_access"] });
+    expect(approvedOffline.token.refresh_token).toBeTruthy();
+    expect(approvedOffline.token.scope).toBe("mcp:read offline_access");
+    expect((await f.access(approvedOffline.token.access_token)).status).toBe(200);
+    expect(f.verifiedProps?.refreshLifetime).toBe("until-revoked");
+  });
+
+  it.each([["unknown value", ["forever"]], ["empty value", [""]], ["duplicate choice", ["until-revoked", "until-revoked"]]])(
+    "rejects %s in persistence consent without consuming the pending authorization",
+    async (_name, choices) => {
+      const f = await fixture();
+      const page = await f.consent(await f.register());
+      const values = new URLSearchParams({ handle: page.handle, decision: "approve", scope: "mcp:read", project: STUDIO });
+      for (const choice of choices) values.append("persistent", choice);
+      const rejected = await f.formRequest("/oauth/authorize", values, { Origin: ORIGIN, Cookie: page.cookie });
+      expect(rejected.status).toBeGreaterThanOrEqual(400);
+      expect(rejected.headers.has("location")).toBe(false);
+      expect((await f.approve(page, { persistent: true })).status).toBe(302);
+    },
+  );
+
+  it("does not allow old pending consent to opt into persistence or silently gain it", async () => {
+    const f = await fixture();
+    const client = await f.register();
+    const page = await f.consent(client);
+    await f.legacyPendingConsent(page);
+    expect((await f.approve(page, { persistent: true })).status).toBeGreaterThanOrEqual(400);
+    const approved = await f.approve(page);
+    expect(approved.status).toBe(302);
+    const response = await f.exchange(client, new URL(approved.headers.get("location")!).searchParams.get("code")!);
+    expect(response.status).toBe(200);
+    const token = await response.json() as TokenResponse;
+    expect(token.refresh_token).toBeUndefined();
+    expect((await f.access(token.access_token)).status).toBe(200);
+    expect(f.verifiedProps).not.toHaveProperty("refreshLifetime");
+  });
+
+  it("retains an existing finite grant deadline even when display metadata alone says until revoked", async () => {
+    const f = await fixture();
+    const { client, token } = await f.grant({ requestedScopes: "mcp:read offline_access", scopes: ["mcp:read", "offline_access"], legacyConsent: true });
+    const [key, stored] = [...f.storage.store.entries()].find(([key]) => key.startsWith("grant:"))!;
+    const grant = JSON.parse(stored.value);
+    const originalExpiry = grant.expiresAt;
+    grant.metadata.refreshLifetime = "until-revoked";
+    f.storage.store.set(key, { ...stored, value: JSON.stringify(grant) });
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now + 15 * 24 * 60 * 60 * 1000);
+    const refreshed = await f.refresh(client, token.refresh_token!);
+    expect(refreshed.status).toBe(200);
+    const next = await refreshed.json() as TokenResponse;
+    expect(JSON.parse(f.storage.store.get(key)!.value).expiresAt).toBe(originalExpiry);
+    expect((await f.access(next.access_token)).status).toBe(200);
+    expect(f.verifiedProps).not.toHaveProperty("refreshLifetime");
+    clock.mockReturnValue(now + 31 * 24 * 60 * 60 * 1000);
+    const expired = await f.refresh(client, next.refresh_token!);
+    expect(expired.status).toBe(400);
+    expect(await expired.json()).toMatchObject({ error: "invalid_grant" });
+  });
+
+  it("retains the consent snapshot when a persistent form forges projects or wider scopes", async () => {
+    const f = await fixture();
+    const client = await f.register();
+    const page = await f.consent(client);
+    f.db.state.projects.push(project(UNKNOWN_PROJECT, "new-project", "Added after consent"));
+    expect((await f.approve(page, { persistent: true, projects: [UNKNOWN_PROJECT] })).status).toBeGreaterThanOrEqual(400);
+    for (const scope of ["mcp:write", "mcp:admin", "offline_access"]) {
+      expect((await f.approve(page, { persistent: true, scopes: ["mcp:read", scope] })).status).toBeGreaterThanOrEqual(400);
+    }
+    const approved = await f.approve(page, { persistent: true, projects: [ATLAS] });
+    expect(approved.status).toBe(302);
+    const exchanged = await f.exchange(client, new URL(approved.headers.get("location")!).searchParams.get("code")!);
+    expect(exchanged.status).toBe(200);
+    const token = await exchanged.json() as TokenResponse;
+    expect(token.scope).toBe("mcp:read");
+    const access = await f.access(token.access_token);
+    expect(access.status).toBe(200);
+    expect(await access.json()).toMatchObject({ projectIds: [ATLAS], scopes: ["mcp:read"] });
+  });
+
+  it("refreshes read-only persistence after 31, 70 and 100 days while preserving projects, scopes and short access tokens", async () => {
+    const f = await fixture();
+    const { client, token } = await f.grant({ persistent: true, projects: [ATLAS] });
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now");
+    let latest = token;
+    for (const days of [31, 70, 100]) {
+      clock.mockReturnValue(now + days * 24 * 60 * 60 * 1000);
+      expect((await f.access(latest.access_token)).status).toBe(401);
+      const refreshed = await f.refresh(client, latest.refresh_token!);
+      expect(refreshed.status).toBe(200);
+      const next = await refreshed.json() as TokenResponse;
+      expect(next.refresh_token).toBeTruthy();
+      expect(next.refresh_token).not.toBe(latest.refresh_token);
+      expect(next.scope).toBe("mcp:read");
+      expect(next.expires_in).toBe(900);
+      const access = await f.access(next.access_token);
+      expect(access.status).toBe(200);
+      expect(await access.json()).toMatchObject({ projectIds: [ATLAS], scopes: ["mcp:read"] });
+      latest = next;
+    }
+    const grant = [...f.storage.store.entries()].find(([key]) => key.startsWith("grant:"))![1];
+    expect(JSON.parse(grant.value)).not.toHaveProperty("expiresAt");
+    expect(grant.expiresAtMs).toBeNull();
+    const markers = [...f.storage.store.entries()].filter(([key]) => key.startsWith("ui:used-refresh:"));
+    expect(markers).toHaveLength(3);
+    for (const [, marker] of markers) {
+      expect(JSON.parse(marker.value)).toMatchObject({ refreshLifetime: "until-revoked", resource: RESOURCE, clientId: client.client_id });
+      expect(JSON.parse(marker.value)).not.toHaveProperty("expiresAt");
+      expect(marker.expiresAtMs).toBeNull();
+    }
+  });
+
+  it("revokes persistent historical replay after 70 days and coordinator restart while refusing client or resource confusion", async () => {
+    const f = await fixture();
+    const { client, token } = await f.grant({ persistent: true });
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now");
+    let latest = token;
+    for (const days of [0, 31, 70]) {
+      clock.mockReturnValue(now + days * 24 * 60 * 60 * 1000);
+      const refreshed = await f.refresh(client, latest.refresh_token!);
+      expect(refreshed.status).toBe(200);
+      latest = await refreshed.json() as TokenResponse;
+    }
+    expect((await f.refresh(await f.register(), token.refresh_token!)).status).toBeGreaterThanOrEqual(400);
+    expect((await f.refresh(client, token.refresh_token!, { resource: `${ORIGIN}/other` })).status).toBe(400);
+    expect((await f.access(latest.access_token)).status).toBe(200);
+    const restarted = createOpenWishOAuthProvider(f.env, f.storage as unknown as KVNamespace, async (_request, _env, _context, access) => Response.json(access));
+    const replay = await restarted.fetch(new Request(`${ORIGIN}/oauth/token`, {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "refresh_token", client_id: client.client_id, refresh_token: token.refresh_token!, resource: RESOURCE }),
+    }));
+    expect(replay.status).toBe(400);
+    expect(await replay.json()).toMatchObject({ error: "invalid_grant" });
+    expect((await restarted.fetch(new Request(RESOURCE, { headers: { Authorization: `Bearer ${latest.access_token}` } }))).status).toBe(401);
+    expect((await f.refresh(client, latest.refresh_token!)).status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("lets the dashboard administrator revoke a persistent read-only grant", async () => {
+    const f = await fixture();
+    const { client, token } = await f.grant({ persistent: true });
+    const page = await f.request("/oauth/grants", { headers: { Cookie: f.dashboardCookie } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain("until revoked");
+    const values = new URLSearchParams({ csrf: hidden(html, "csrf"), grantId: hidden(html, "grantId") });
+    const revoked = await f.formRequest("/oauth/grants", values, { Origin: ORIGIN, Cookie: `${f.dashboardCookie}; ${responseCookies(page)}` });
+    expect([200, 302, 303]).toContain(revoked.status);
+    expect((await f.access(token.access_token)).status).toBe(401);
+    expect((await f.refresh(client, token.refresh_token!)).status).toBeGreaterThanOrEqual(400);
   });
 });
 
@@ -1229,5 +1502,47 @@ describe("strongly consistent OAuth storage", () => {
     expect(await storage.get("grant:live")).toBe("live");
     expect(memory.records.has("unrelated")).toBe(true);
     expect(await memory.getAlarm()).toBe(now + 120_000);
+  });
+
+  it("keeps indefinite replay markers beyond 30 days until their parent grant is removed", async () => {
+    const memory = new MemoryDurableStorage();
+    const storage = new DurableOAuthStorage(memory as unknown as DurableObjectStorage);
+    const now = Date.now();
+    for (const id of ["first", "other"]) {
+      await storage.put(`grant:synthetic-user:${id}`, JSON.stringify({ metadata: { refreshLifetime: "until-revoked" } }));
+      await storage.put(`ui:used-refresh:synthetic-hash-${id}`, JSON.stringify({
+        userId: "synthetic-user", grantId: id, clientId: `synthetic-client-${id}`,
+        resource: RESOURCE, refreshLifetime: "until-revoked",
+      }));
+    }
+    await memory.put("unrelated", { value: "untouched" });
+    vi.spyOn(Date, "now").mockReturnValue(now + 70 * 24 * 60 * 60 * 1000);
+    await storage.purgeExpired();
+    expect(await storage.get("ui:used-refresh:synthetic-hash-first", "json")).toMatchObject({ refreshLifetime: "until-revoked" });
+    expect(await storage.get("ui:used-refresh:synthetic-hash-other", "json")).toMatchObject({ grantId: "other" });
+    await storage.delete("grant:synthetic-user:first");
+    await storage.purgeExpired();
+    expect(await storage.get("ui:used-refresh:synthetic-hash-first")).toBeNull();
+    expect(await storage.get("ui:used-refresh:synthetic-hash-other", "json")).toMatchObject({ grantId: "other" });
+    expect(await storage.get("grant:synthetic-user:other")).toBeTruthy();
+    expect(memory.records.get("unrelated")).toEqual({ value: "untouched" });
+  });
+
+  it("preserves indefinite replay history when checking its parent grant fails", async () => {
+    const memory = new MemoryDurableStorage();
+    const storage = new DurableOAuthStorage(memory as unknown as DurableObjectStorage);
+    await storage.put("grant:synthetic-user:first", JSON.stringify({ metadata: { refreshLifetime: "until-revoked" } }));
+    await storage.put("ui:used-refresh:synthetic-hash-first", JSON.stringify({
+      userId: "synthetic-user", grantId: "first", clientId: "synthetic-client",
+      resource: RESOURCE, refreshLifetime: "until-revoked",
+    }));
+    const read = vi.spyOn(memory, "get").mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("synthetic durable storage read failure"));
+    await expect(storage.purgeExpired()).rejects.toThrow("synthetic durable storage read failure");
+    expect(read).toHaveBeenLastCalledWith("oauth:grant:synthetic-user:first");
+    expect(memory.records.has("oauth:ui:used-refresh:synthetic-hash-first")).toBe(true);
+    expect(memory.records.has("oauth:grant:synthetic-user:first")).toBe(true);
+    read.mockRestore();
+    await storage.purgeExpired();
+    expect(await storage.get("ui:used-refresh:synthetic-hash-first", "json")).toMatchObject({ refreshLifetime: "until-revoked" });
   });
 });
