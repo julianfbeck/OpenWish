@@ -84,6 +84,18 @@ function attribute(tag: string, name: string) {
   return value === undefined ? undefined : decodeHtml(value);
 }
 
+/** Approval and denial leave the consent form through an interstitial page. */
+async function continuation(response: Response) {
+  expect(response.status).toBe(200);
+  expect(response.headers.has("location")).toBe(false);
+  const csp = response.headers.get("content-security-policy") ?? "";
+  expect(csp).toContain("form-action 'self';");
+  const html = await response.text();
+  const target = html.match(/<meta http-equiv="refresh" content="0;url=([^"]+)">/)?.[1];
+  expect(target, "Missing continuation refresh").toBeTruthy();
+  return new URL(decodeHtml(target!));
+}
+
 function inputs(html: string, name: string) {
   return (html.match(/<input\b[^>]*>/gi) ?? []).filter((tag) => attribute(tag, "name") === name);
 }
@@ -240,8 +252,7 @@ async function fixture(
     const page = await consent(client, { scope: options.requestedScopes ?? "mcp:read" });
     if (options.legacyConsent) await legacyPendingConsent(page);
     const response = await approve(page, options);
-    expect(response.status).toBe(302);
-    const location = new URL(response.headers.get("location")!);
+    const location = await continuation(response);
     expect(`${location.origin}${location.pathname}`).toBe(REDIRECT);
     expect(location.searchParams.get("state")).toBe(STATE);
     expect(location.searchParams.get("iss")).toBe(ORIGIN);
@@ -468,7 +479,7 @@ describe("OpenWish MCP OAuth discovery and dashboard authentication", () => {
       expect(rejected.headers.has("location")).toBe(false);
     }
     // Origin failures must leave the pending browser-bound consent usable.
-    expect((await f.approve(page)).status).toBe(302);
+    await continuation(await f.approve(page));
   });
 
   it("refuses a signed dashboard session for another username without consuming consent", async () => {
@@ -483,7 +494,7 @@ describe("OpenWish MCP OAuth discovery and dashboard authentication", () => {
     expect((await f.request("/oauth/grants", { headers: { Cookie: otherCookie } })).status).toBe(401);
     expect((await f.approve(page, { cookie: page.cookie.replace(f.dashboardCookie, otherCookie) })).status).toBe(401);
     expect((await f.request("/mcp", { headers: { Authorization: `Bearer ${otherSession}` } })).status).toBe(401);
-    expect((await f.approve(page)).status).toBe(302);
+    await continuation(await f.approve(page));
   });
 
   it("offers only requested scopes and escapes hostile client and project metadata", async () => {
@@ -521,8 +532,7 @@ describe("OpenWish MCP OAuth discovery and dashboard authentication", () => {
     expect(page.html).toContain("chatgpt.example.test");
     expect(page.html).toContain("client.example.test");
     const response = await f.approve(page);
-    expect(response.status).toBe(302);
-    const code = new URL(response.headers.get("location")!).searchParams.get("code")!;
+    const code = (await continuation(response)).searchParams.get("code")!;
     const tokenResponse = await f.exchange(client, code);
     expect(tokenResponse.status).toBe(200);
     const token = await tokenResponse.json() as TokenResponse;
@@ -615,8 +625,7 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     duplicate.append("handle", "synthetic-forged-handle");
     expect((await f.formRequest("/oauth/authorize", duplicate, { Origin: ORIGIN, Cookie: page.cookie })).status).toBeGreaterThanOrEqual(400);
     const approved = await f.approve(page);
-    expect(approved.status).toBe(302);
-    expect(new URL(approved.headers.get("location")!).origin).toBe(new URL(REDIRECT).origin);
+    expect((await continuation(approved)).origin).toBe(new URL(REDIRECT).origin);
   });
 
   it.each([
@@ -630,6 +639,24 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     const response = await f.approve(page, { ...options, ...("dashboardOnly" in options && options.dashboardOnly ? { cookie: f.dashboardCookie } : {}) });
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.headers.has("location")).toBe(false);
+  });
+
+  it("leaves the consent form through a page so callback redirects are not blocked by form-action", async () => {
+    // Regression: www.cursor.com's callback 308-redirects to cursor.com. A 302
+    // from the form POST put that hop under the consent page's form-action CSP,
+    // Chromium blocked it silently, and the second click failed as already used.
+    const f = await fixture();
+    const page = await f.consent(await f.register());
+    expect(page.response.headers.get("content-security-policy")).toContain("form-action 'self';");
+    expect(page.response.headers.get("content-security-policy")).not.toContain(new URL(REDIRECT).origin);
+
+    const approved = await f.approve(page);
+    const html = await approved.clone().text();
+    const target = await continuation(approved);
+    expect(`${target.origin}${target.pathname}`).toBe(REDIRECT);
+    expect(target.searchParams.get("code")).toBeTruthy();
+    expect(html).toContain(`continue to ${new URL(REDIRECT).host}`);
+    expect(attribute(html.match(/<a\b[^>]*>/i)![0], "href")).toBe(target.href);
   });
 
   it("explains why a consent submission was rejected and logs the reason", async () => {
@@ -660,7 +687,7 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     const noOrigin = await f.formRequest("/oauth/authorize", new URLSearchParams({ handle: page.handle, decision: "approve", scope: "mcp:read", project: STUDIO }), { Cookie: page.cookie });
     expect(noOrigin.status).toBeGreaterThanOrEqual(400);
     const responses = await Promise.all([f.approve(page), f.approve(page)]);
-    expect(responses.filter((response) => response.status === 302)).toHaveLength(1);
+    expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
     expect(responses.filter((response) => response.status >= 400)).toHaveLength(1);
     expect((await f.approve(page)).status).toBeGreaterThanOrEqual(400);
   });
@@ -674,8 +701,7 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     expect((await f.approve(page)).status).toBeGreaterThanOrEqual(400);
     vi.restoreAllMocks();
     const denied = await f.approve(await f.consent(client), { decision: "deny" });
-    expect(denied.status).toBe(302);
-    const location = new URL(denied.headers.get("location")!);
+    const location = await continuation(denied);
     expect(`${location.origin}${location.pathname}`).toBe(REDIRECT);
     expect(location.searchParams.get("error")).toBe("access_denied");
     expect(location.searchParams.get("state")).toBe(STATE);
@@ -1189,8 +1215,7 @@ describe("explicit persistent OAuth connections", () => {
     expect(persistent[0]).not.toMatch(/\bchecked\b/);
     expect(decodeHtml(page.html)).toContain("until I revoke it");
     const approved = await f.approve(page);
-    expect(approved.status).toBe(302);
-    const response = await f.exchange(client, new URL(approved.headers.get("location")!).searchParams.get("code")!);
+    const response = await f.exchange(client, (await continuation(approved)).searchParams.get("code")!);
     expect(response.status).toBe(200);
     const token = await response.json() as TokenResponse;
     expect(token.scope).toBe("mcp:read");
@@ -1264,7 +1289,7 @@ describe("explicit persistent OAuth connections", () => {
       const rejected = await f.formRequest("/oauth/authorize", values, { Origin: ORIGIN, Cookie: page.cookie });
       expect(rejected.status).toBeGreaterThanOrEqual(400);
       expect(rejected.headers.has("location")).toBe(false);
-      expect((await f.approve(page, { persistent: true })).status).toBe(302);
+      await continuation(await f.approve(page, { persistent: true }));
     },
   );
 
@@ -1275,8 +1300,7 @@ describe("explicit persistent OAuth connections", () => {
     await f.legacyPendingConsent(page);
     expect((await f.approve(page, { persistent: true })).status).toBeGreaterThanOrEqual(400);
     const approved = await f.approve(page);
-    expect(approved.status).toBe(302);
-    const response = await f.exchange(client, new URL(approved.headers.get("location")!).searchParams.get("code")!);
+    const response = await f.exchange(client, (await continuation(approved)).searchParams.get("code")!);
     expect(response.status).toBe(200);
     const token = await response.json() as TokenResponse;
     expect(token.refresh_token).toBeUndefined();
@@ -1316,8 +1340,7 @@ describe("explicit persistent OAuth connections", () => {
       expect((await f.approve(page, { persistent: true, scopes: ["mcp:read", scope] })).status).toBeGreaterThanOrEqual(400);
     }
     const approved = await f.approve(page, { persistent: true, projects: [ATLAS] });
-    expect(approved.status).toBe(302);
-    const exchanged = await f.exchange(client, new URL(approved.headers.get("location")!).searchParams.get("code")!);
+    const exchanged = await f.exchange(client, (await continuation(approved)).searchParams.get("code")!);
     expect(exchanged.status).toBe(200);
     const token = await exchanged.json() as TokenResponse;
     expect(token.scope).toBe("mcp:read");

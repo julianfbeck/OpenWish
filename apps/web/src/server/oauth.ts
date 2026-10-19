@@ -97,20 +97,32 @@ function escape(value: string) {
   return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-function html(body: string, status = 200, existing?: Headers, validatedRedirectUri?: string) {
+function html(body: string, status = 200, existing?: Headers) {
   const headers = new Headers(existing);
   headers.set("Content-Type", "text/html; charset=utf-8");
   headers.set("Cache-Control", "no-store");
-  // Chromium applies form-action to the redirect after submitting the form.
-  // Only parseAuthRequest-validated callback origins may be added here.
-  const callback = validatedRedirectUri ? ` ${new URL(validatedRedirectUri).origin}` : "";
-  headers.set("Content-Security-Policy", `default-src 'none'; form-action 'self'${callback}; frame-ancestors 'none'; base-uri 'none'; style-src 'unsafe-inline'`);
+  // Forms only post back here. Leaving for the client goes through continueTo().
+  headers.set("Content-Security-Policy", "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; style-src 'unsafe-inline'");
   headers.set("X-Frame-Options", "DENY");
   headers.set("X-Content-Type-Options", "nosniff");
   // Native form POSTs with no-referrer send Origin: null in browsers.
   // Preserve our strict own-origin CSRF check without sending referrers to clients.
   headers.set("Referrer-Policy", "same-origin");
   return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OpenWish MCP access</title><style>body{font:16px system-ui;max-width:720px;margin:48px auto;padding:0 24px;line-height:1.6}label{display:block;margin:12px 0}button{padding:8px 16px;margin:8px 12px 8px 0}fieldset{margin:20px 0}small{display:block;color:#555}</style><body>${body}</body></html>`, { status, headers });
+}
+
+/** Leave the consent form through a page of our own instead of a 302. Chromium
+ * applies the form's `form-action` CSP to every redirect after a form POST, so a
+ * callback that redirects again (www.cursor.com → cursor.com) or uses an app
+ * scheme was blocked silently, and a second click then failed as already used.
+ * A meta refresh is a fresh navigation that form-action does not govern.
+ * `location` is the provider's redirect to the validated client callback. */
+function continueTo(location: string, existing: Headers) {
+  const target = new URL(location);
+  const name = target.host || target.protocol.replace(/:$/, "");
+  const headers = new Headers(existing);
+  headers.delete("Location");
+  return html(`<meta http-equiv="refresh" content="0;url=${escape(location)}"><h1>Returning to ${escape(name)}</h1><p>If nothing happens, <a href="${escape(location)}">continue to ${escape(name)}</a>.</p>`, 200, headers);
 }
 
 function unavailable() {
@@ -254,7 +266,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
       await env.OAUTH_KV.put(`ui:consent:${await digest(consent.handle)}`, JSON.stringify({
         subject, scopes, projectIds: choices.map((project) => project.id), allowsPersistentRefresh: true,
       } satisfies ConsentPolicy), { expirationTtl: CONSENT_SECONDS });
-      return html(consentPage(details, consent.handle, choices, scopes), 200, consent.headers, details.redirectUri);
+      return html(consentPage(details, consent.handle, choices, scopes), 200, consent.headers);
     } catch (error) {
       // Only parseAuthRequest's validated redirect context is safe to use.
       if (error instanceof AuthorizationError && error.redirectTo) return Response.redirect(error.redirectTo, 302);
@@ -277,7 +289,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
     if (decision === "deny") {
       const denied = await oauth.denyConsent(request, handle);
       await env.OAUTH_KV.delete(policyKey);
-      return new Response(null, { status: 302, headers: denied.headers });
+      return continueTo(denied.redirectTo, denied.headers);
     }
     if (decision !== "approve") return invalid();
     const scopes = [...new Set(form.getAll("scope"))];
@@ -303,8 +315,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
         ...(refreshLifetime ? { refreshLifetime } : {}) },
       props: { subject, projectIds, scopes, ...(refreshLifetime ? { refreshLifetime } : {}) } satisfies OAuthProps,
     });
-    approved.headers.set("Location", redirectTo);
-    return new Response(null, { status: 302, headers: approved.headers });
+    return continueTo(redirectTo, approved.headers);
   } catch (error) {
     // Errors after a form submission have no trusted redirect context.
     if (error instanceof AuthorizationError || error instanceof CimdFetchError || error instanceof TypeError) return rejected("consent", error);
