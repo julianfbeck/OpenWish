@@ -456,8 +456,10 @@ describe("OpenWish MCP OAuth discovery and dashboard authentication", () => {
     expect(page.response.headers.get("x-frame-options")).toBe("DENY");
     expect(page.html).toContain("client.example.test");
     const scopes = inputs(page.html, "scope");
-    expect(scopes.find((tag) => attribute(tag, "value") === "mcp:read")).toMatch(/\bchecked\b/);
-    for (const scope of ["mcp:write", "mcp:admin", "offline_access"]) {
+    for (const scope of ["mcp:read", "mcp:write"]) {
+      expect(scopes.find((tag) => attribute(tag, "value") === scope)).toMatch(/\bchecked\b/);
+    }
+    for (const scope of ["mcp:admin", "offline_access"]) {
       const input = scopes.find((tag) => attribute(tag, "value") === scope);
       expect(input).toBeTruthy();
       expect(input).not.toMatch(/\bchecked\b/);
@@ -497,14 +499,14 @@ describe("OpenWish MCP OAuth discovery and dashboard authentication", () => {
     await continuation(await f.approve(page));
   });
 
-  it("offers only read checked, unrequested write/admin unchecked, and escapes hostile client and project metadata", async () => {
+  it("pre-ticks read and write, offers admin unchecked, and escapes hostile client and project metadata", async () => {
     const malicious = '<img src=x onerror="alert(1)">';
     const f = await fixture([project(STUDIO, "studio", malicious)]);
     const client = await f.register({ client_name: malicious });
     const page = await f.consent(client);
     const scopes = inputs(page.html, "scope");
     expect(scopes.map((tag) => attribute(tag, "value"))).toEqual(["mcp:read", "mcp:write", "mcp:admin"]);
-    expect(scopes.filter((tag) => /\bchecked\b/.test(tag)).map((tag) => attribute(tag, "value"))).toEqual(["mcp:read"]);
+    expect(scopes.filter((tag) => /\bchecked\b/.test(tag)).map((tag) => attribute(tag, "value"))).toEqual(["mcp:read", "mcp:write"]);
     expect(page.html).toContain("Not requested by this application");
     expect(page.html).not.toContain(malicious);
     expect(page.html).not.toMatch(/<img\b/i);

@@ -98,10 +98,10 @@ The Worker implements a stateless Streamable HTTP MCP server at
 
 - **OAuth for ChatGPT:** add `https://wishkit.juli.sh/mcp` (or your own host)
   as the MCP URL and select OAuth. Sign in with your existing OpenWish dashboard
-  login/passkey, choose existing projects and approve permissions. Reading is
-  the default; editing and destructive actions require additional permissions.
-  Clients such as Cursor request only read access, so the consent page always
-  offers write and admin as unchecked extras that only you can grant.
+  login/passkey, choose existing projects and approve permissions. Read and
+  write (replies, state changes) are pre-ticked; destructive admin actions
+  (delete, merge) need an explicit tick. The consent page offers these even
+  though clients such as Cursor request only read access.
   Access tokens expire after 15 minutes. The separate, unchecked **Keep this
   connection until I revoke it** option permits renewable access without a fixed
   grant expiry. It does not add editing permissions. Existing finite grants keep

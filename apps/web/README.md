@@ -290,9 +290,11 @@ projects, and permissions shown by the consent page.
 For read-only access, if ChatGPT's OAuth settings offer **Base scopes**, use
 `mcp:read offline_access`. The server's challenge advertises only `mcp:read`,
 so most clients (Cursor included) request read access alone. The consent page
-therefore always offers `mcp:write` and `mcp:admin` as unchecked extras marked
-"Not requested by this application"; tick them only when the connection should
-close, reply to or delete feedback. OpenWish presents a separate, unchecked **Keep this
+therefore always offers `mcp:write` and `mcp:admin`, marked "Not requested by
+this application" when the client did not ask for them. `mcp:read` and
+`mcp:write` (replies, closing and updating feedback) are pre-ticked; `mcp:admin`
+(delete, merge) is never pre-ticked. Untick write for a read-only connection.
+OpenWish presents a separate, unchecked **Keep this
 connection until I revoke it** option on fresh consent pages. Select it explicitly
 to permit renewable access; it does not add tool permissions or projects. This
 option is also available when ChatGPT requests only `mcp:read`, without adding an
@@ -303,7 +305,7 @@ behavior for that scope combination requires an approved live expiry test.
 | Scope | Permission for selected projects |
 | --- | --- |
 | `mcp:read` | Default. Read project metadata, analytics, features, issues, private notes, and screenshots. Issue data can include reporter contact and diagnostic information. |
-| `mcp:write` | Create/edit feedback, change workflow state, add notes, update project settings, reply to reporters, and send test emails. Replies and resolution changes can send reporter emails. |
+| `mcp:write` | Pre-ticked on the consent page. Create/edit feedback, change workflow state, add notes, update project settings, reply to reporters, and send test emails. Replies and resolution changes can send reporter emails. |
 | `mcp:admin` | Perform administrative/destructive operations on selected existing projects, including merging or deleting feedback and deleting projects. |
 | `offline_access` | Optional client request for refresh access. The owner must explicitly approve the connection lifetime; this scope adds no tool permissions. |
 

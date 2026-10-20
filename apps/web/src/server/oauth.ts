@@ -23,6 +23,9 @@ export const OPENWISH_OAUTH_SCOPES = ["mcp:read", "mcp:write", "mcp:admin", "off
 const ACCESS_SECONDS = 900;
 const LEGACY_REFRESH_SECONDS = 30 * 24 * 60 * 60;
 const CONSENT_SECONDS = 600;
+/** Pre-ticked on the consent page: read plus write (replies, state changes).
+ * Admin (delete/merge) and offline access always need an explicit tick. */
+const DEFAULT_CONSENT_SCOPES = ["mcp:read", "mcp:write"];
 const BODY_DEADLINE_MS = 5000;
 const JWT_CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 const GRANTS_COOKIE = "__Host-openwish-oauth-grants";
@@ -233,7 +236,7 @@ function consentPage(details: ConsentDescription, handle: string, choices: Proje
     ${details.redirectIsLoopback ? "<p>Only continue if you just started signing in from an app on your computer.</p>" : ""}
     <p>You are signed in as an OpenWish administrator. Choose the existing projects this application may access. Future projects are excluded.</p>
     <form method="post" action="/oauth/authorize"><input type="hidden" name="handle" value="${escape(handle)}">
-    <fieldset><legend>Permissions</legend>${scopes.map((scope) => `<label><input type="checkbox" name="scope" value="${escape(scope)}"${scope === "mcp:read" ? " checked" : ""}> ${escape(scopeLabels[scope])}${requested.includes(scope) ? "" : " <small>Not requested by this application. Grant it only if you want it to have this access.</small>"}</label>`).join("")}</fieldset>
+    <fieldset><legend>Permissions</legend>${scopes.map((scope) => `<label><input type="checkbox" name="scope" value="${escape(scope)}"${DEFAULT_CONSENT_SCOPES.includes(scope) ? " checked" : ""}> ${escape(scopeLabels[scope])}${requested.includes(scope) ? "" : " <small>Not requested by this application.</small>"}</label>`).join("")}</fieldset>
     <fieldset><legend>Connection duration</legend>
     ${scopes.includes("offline_access") ? "<p>The optional offline access permission above allows automatic renewal until you revoke this connection.</p>" : '<label><input type="checkbox" name="persistent" value="until-revoked"> Keep this connection until I revoke it (offline access)</label>'}
     <p>Automatic renewal has no fixed expiration. Access tokens still expire after 15 minutes, and access remains limited to your selected projects and permissions. You can revoke the connection at any time in Manage OAuth access. Without automatic renewal, this authorization expires after 15 minutes.</p></fieldset>
@@ -261,7 +264,7 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
       const requested = [...new Set(["mcp:read", ...parsed.scope])];
       const authRequest = { ...parsed, scope: requested };
       // Clients follow the read-only challenge and request only mcp:read, so the
-      // owner may additionally grant write/admin; both stay unchecked by default.
+      // owner may additionally grant write/admin (write is pre-ticked, admin is not).
       // offline_access is offered only when requested; otherwise the separate
       // persistence choice covers renewal without adding an unrequested scope.
       const scopes = OPENWISH_OAUTH_SCOPES.filter((scope) => scope !== "offline_access" || requested.includes(scope));
