@@ -497,12 +497,15 @@ describe("OpenWish MCP OAuth discovery and dashboard authentication", () => {
     await continuation(await f.approve(page));
   });
 
-  it("offers only requested scopes and escapes hostile client and project metadata", async () => {
+  it("offers only read checked, unrequested write/admin unchecked, and escapes hostile client and project metadata", async () => {
     const malicious = '<img src=x onerror="alert(1)">';
     const f = await fixture([project(STUDIO, "studio", malicious)]);
     const client = await f.register({ client_name: malicious });
     const page = await f.consent(client);
-    expect(inputs(page.html, "scope").map((tag) => attribute(tag, "value"))).toEqual(["mcp:read"]);
+    const scopes = inputs(page.html, "scope");
+    expect(scopes.map((tag) => attribute(tag, "value"))).toEqual(["mcp:read", "mcp:write", "mcp:admin"]);
+    expect(scopes.filter((tag) => /\bchecked\b/.test(tag)).map((tag) => attribute(tag, "value"))).toEqual(["mcp:read"]);
+    expect(page.html).toContain("Not requested by this application");
     expect(page.html).not.toContain(malicious);
     expect(page.html).not.toMatch(/<img\b/i);
     expect(decodeHtml(page.html)).toContain(malicious);
@@ -595,7 +598,6 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     ["no project", { projects: [] }],
     ["unknown project ID", { projects: [UNKNOWN_PROJECT] }],
     ["project slug rather than immutable ID", { projects: ["studio"] }],
-    ["unrequested write scope", { scopes: ["mcp:read", "mcp:write"] }],
     ["unrequested offline access", { scopes: ["mcp:read", "offline_access"] }],
     ["unknown scope", { scopes: ["mcp:read", "mcp:everything"] }],
     ["no read permission", { scopes: [] }],
@@ -605,6 +607,17 @@ describe("OpenWish MCP OAuth consent and grant isolation", () => {
     const response = await f.approve(page, options);
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.headers.has("location")).toBe(false);
+  });
+
+  it("lets the owner grant write to a client that requested only read", async () => {
+    // Clients follow the read-only challenge (scope="mcp:read"), so write access
+    // must be grantable on the consent page or it could never be obtained.
+    const f = await fixture();
+    const { token } = await f.grant({ requestedScopes: "mcp:read", scopes: ["mcp:read", "mcp:write"], projects: [ATLAS] });
+    expect(token.scope.split(" ").sort()).toEqual(["mcp:read", "mcp:write"]);
+    const response = await f.access(token.access_token);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ projectIds: [ATLAS], scopes: ["mcp:read", "mcp:write"] });
   });
 
   it("rejects a project removed after the consent page was opened", async () => {
@@ -1207,7 +1220,7 @@ describe("explicit persistent OAuth connections", () => {
     const f = await fixture();
     const client = await f.register();
     const page = await f.consent(client);
-    expect(inputs(page.html, "scope").map((tag) => attribute(tag, "value"))).toEqual(["mcp:read"]);
+    expect(inputs(page.html, "scope").map((tag) => attribute(tag, "value"))).toEqual(["mcp:read", "mcp:write", "mcp:admin"]);
     const persistent = inputs(page.html, "persistent");
     expect(persistent).toHaveLength(1);
     expect(attribute(persistent[0]!, "type")).toBe("checkbox");
@@ -1330,13 +1343,13 @@ describe("explicit persistent OAuth connections", () => {
     expect(await expired.json()).toMatchObject({ error: "invalid_grant" });
   });
 
-  it("retains the consent snapshot when a persistent form forges projects or wider scopes", async () => {
+  it("retains the consent snapshot when a persistent form forges projects or undisplayed scopes", async () => {
     const f = await fixture();
     const client = await f.register();
     const page = await f.consent(client);
     f.db.state.projects.push(project(UNKNOWN_PROJECT, "new-project", "Added after consent"));
     expect((await f.approve(page, { persistent: true, projects: [UNKNOWN_PROJECT] })).status).toBeGreaterThanOrEqual(400);
-    for (const scope of ["mcp:write", "mcp:admin", "offline_access"]) {
+    for (const scope of ["offline_access", "mcp:everything"]) {
       expect((await f.approve(page, { persistent: true, scopes: ["mcp:read", scope] })).status).toBeGreaterThanOrEqual(400);
     }
     const approved = await f.approve(page, { persistent: true, projects: [ATLAS] });

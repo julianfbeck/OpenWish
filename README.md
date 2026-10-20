@@ -100,6 +100,8 @@ The Worker implements a stateless Streamable HTTP MCP server at
   as the MCP URL and select OAuth. Sign in with your existing OpenWish dashboard
   login/passkey, choose existing projects and approve permissions. Reading is
   the default; editing and destructive actions require additional permissions.
+  Clients such as Cursor request only read access, so the consent page always
+  offers write and admin as unchecked extras that only you can grant.
   Access tokens expire after 15 minutes. The separate, unchecked **Keep this
   connection until I revoke it** option permits renewable access without a fixed
   grant expiry. It does not add editing permissions. Existing finite grants keep

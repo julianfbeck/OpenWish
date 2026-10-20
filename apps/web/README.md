@@ -288,8 +288,11 @@ OpenWish dashboard login/passkey and approve the client, selected existing
 projects, and permissions shown by the consent page.
 
 For read-only access, if ChatGPT's OAuth settings offer **Base scopes**, use
-`mcp:read offline_access`. Request `mcp:write` or `mcp:admin` only when those
-operations are needed. OpenWish presents a separate, unchecked **Keep this
+`mcp:read offline_access`. The server's challenge advertises only `mcp:read`,
+so most clients (Cursor included) request read access alone. The consent page
+therefore always offers `mcp:write` and `mcp:admin` as unchecked extras marked
+"Not requested by this application"; tick them only when the connection should
+close, reply to or delete feedback. OpenWish presents a separate, unchecked **Keep this
 connection until I revoke it** option on fresh consent pages. Select it explicitly
 to permit renewable access; it does not add tool permissions or projects. This
 option is also available when ChatGPT requests only `mcp:read`, without adding an

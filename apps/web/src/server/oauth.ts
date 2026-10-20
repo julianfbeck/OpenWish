@@ -224,7 +224,7 @@ function one(form: URLSearchParams, key: string) {
   return values[0];
 }
 
-function consentPage(details: ConsentDescription, handle: string, choices: ProjectChoice[], scopes: string[]) {
+function consentPage(details: ConsentDescription, handle: string, choices: ProjectChoice[], scopes: string[], requested: string[]) {
   const publisher = details.clientDomain
     ? `<p>Published by <strong>${escape(details.clientDomain)}</strong>.</p>`
     : "<p>This application registered itself; its name is not verified.</p>";
@@ -233,7 +233,7 @@ function consentPage(details: ConsentDescription, handle: string, choices: Proje
     ${details.redirectIsLoopback ? "<p>Only continue if you just started signing in from an app on your computer.</p>" : ""}
     <p>You are signed in as an OpenWish administrator. Choose the existing projects this application may access. Future projects are excluded.</p>
     <form method="post" action="/oauth/authorize"><input type="hidden" name="handle" value="${escape(handle)}">
-    <fieldset><legend>Permissions</legend>${scopes.map((scope) => `<label><input type="checkbox" name="scope" value="${escape(scope)}"${scope === "mcp:read" ? " checked" : ""}> ${escape(scopeLabels[scope])}</label>`).join("")}</fieldset>
+    <fieldset><legend>Permissions</legend>${scopes.map((scope) => `<label><input type="checkbox" name="scope" value="${escape(scope)}"${scope === "mcp:read" ? " checked" : ""}> ${escape(scopeLabels[scope])}${requested.includes(scope) ? "" : " <small>Not requested by this application. Grant it only if you want it to have this access.</small>"}</label>`).join("")}</fieldset>
     <fieldset><legend>Connection duration</legend>
     ${scopes.includes("offline_access") ? "<p>The optional offline access permission above allows automatic renewal until you revoke this connection.</p>" : '<label><input type="checkbox" name="persistent" value="until-revoked"> Keep this connection until I revoke it (offline access)</label>'}
     <p>Automatic renewal has no fixed expiration. Access tokens still expire after 15 minutes, and access remains limited to your selected projects and permissions. You can revoke the connection at any time in Manage OAuth access. Without automatic renewal, this authorization expires after 15 minutes.</p></fieldset>
@@ -258,15 +258,20 @@ async function authorizationPage(request: Request, env: OAuthEnv, origin: string
         return invalid("The application requested an unsupported permission.");
       }
       // Missing scopes get the advertised read baseline, never write/admin/offline access.
-      const scopes = [...new Set(["mcp:read", ...parsed.scope])];
-      const authRequest = { ...parsed, scope: scopes };
+      const requested = [...new Set(["mcp:read", ...parsed.scope])];
+      const authRequest = { ...parsed, scope: requested };
+      // Clients follow the read-only challenge and request only mcp:read, so the
+      // owner may additionally grant write/admin; both stay unchecked by default.
+      // offline_access is offered only when requested; otherwise the separate
+      // persistence choice covers renewal without adding an unrequested scope.
+      const scopes = OPENWISH_OAUTH_SCOPES.filter((scope) => scope !== "offline_access" || requested.includes(scope));
       const details = await oauth.describeConsent(authRequest);
       const choices = await projects(env);
       const consent = await oauth.beginConsent(authRequest);
       await env.OAUTH_KV.put(`ui:consent:${await digest(consent.handle)}`, JSON.stringify({
         subject, scopes, projectIds: choices.map((project) => project.id), allowsPersistentRefresh: true,
       } satisfies ConsentPolicy), { expirationTtl: CONSENT_SECONDS });
-      return html(consentPage(details, consent.handle, choices, scopes), 200, consent.headers);
+      return html(consentPage(details, consent.handle, choices, scopes, requested), 200, consent.headers);
     } catch (error) {
       // Only parseAuthRequest's validated redirect context is safe to use.
       if (error instanceof AuthorizationError && error.redirectTo) return Response.redirect(error.redirectTo, 302);
