@@ -29,6 +29,22 @@ function createEnv(db: MockD1Database, bucket: MockR2Bucket, email: MockSendEmai
   };
 }
 
+// The text part as the recipient reads it, whatever transfer encoding mimetext
+// picked for it.
+function decodedBody(raw: string | undefined) {
+  const message = raw ?? "";
+  const separator = message.search(/\r?\n\r?\n/);
+  const headers = message.slice(0, separator);
+  const body = message.slice(separator).trim();
+  if (/Content-Transfer-Encoding:\s*base64/i.test(headers)) {
+    return Buffer.from(body.replace(/\s+/g, ""), "base64").toString("utf8");
+  }
+  if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(headers)) {
+    return body.replace(/=\r?\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  }
+  return body;
+}
+
 async function login(env: ReturnType<typeof createEnv>) {
   const response = await requestApp(
     "/api/auth/login",
@@ -149,7 +165,7 @@ describe("notification email flow", () => {
     expect(response.status).toBe(200);
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0]?.to).toBe(adminEmail);
-    expect(email.sent[0]?.raw).toContain("New filter");
+    expect(decodedBody(email.sent[0]?.raw)).toContain("New filter");
   });
 
   it("fires a notification email when a new bug is created", async () => {
@@ -176,7 +192,7 @@ describe("notification email flow", () => {
     expect(response.status).toBe(200);
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0]?.to).toBe(adminEmail);
-    expect(email.sent[0]?.raw).toContain("Crash");
+    expect(decodedBody(email.sent[0]?.raw)).toContain("Crash");
   });
 
   it("fires a notification email when a user comments on a wish", async () => {
@@ -209,9 +225,100 @@ describe("notification email flow", () => {
     expect(response.status).toBe(200);
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0]?.to).toBe(adminEmail);
-    expect(email.sent[0]?.raw).toContain("Dark mode");
-    expect(email.sent[0]?.raw).toContain("Would love this for night shifts.");
-    expect(email.sent[0]?.raw).toContain(commenterUuid);
+    expect(decodedBody(email.sent[0]?.raw)).toContain("Dark mode");
+    expect(decodedBody(email.sent[0]?.raw)).toContain("Would love this for night shifts.");
+    expect(decodedBody(email.sent[0]?.raw)).toContain(commenterUuid);
+  });
+
+  it("emails the full feature request with a direct link and the platform", async () => {
+    db.state.projects[0]!.notification_email = adminEmail;
+    const description = `${"Search should cover card names, set codes and artists. ".repeat(8)}End of request.`.slice(0, 500);
+
+    const response = await requestApp(
+      "/api/wish/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wishkit-api-key": apiKey,
+          "x-wishkit-uuid": ownerUuid,
+          "x-wishkit-sdk-kind": "ios",
+        },
+        body: JSON.stringify({ title: "Better search", description, state: "pending" }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const created = (await response.json()) as { id: string };
+    const raw = decodedBody(email.sent[0]?.raw);
+    expect(raw).toContain(description);
+    expect(raw).not.toContain("…");
+    expect(raw).toContain("Platform: iOS");
+    expect(raw).toContain(`https://dash.example.com/dashboard/${projectSlug}/features/${created.id}`);
+  });
+
+  it("emails the full bug report with a direct link to the bug", async () => {
+    db.state.projects[0]!.notification_email = adminEmail;
+    const description = `Steps: ${"open the scanner, rotate the phone, ".repeat(60)}then it crashes.`.slice(0, 2_000);
+
+    const response = await requestApp(
+      "/api/bug/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wishkit-api-key": apiKey,
+          "x-wishkit-uuid": ownerUuid,
+          "x-wishkit-sdk-kind": "android",
+        },
+        body: JSON.stringify({ title: "Rotation crash", description, screenshotKeys: [] }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const created = (await response.json()) as { id: string };
+    const raw = decodedBody(email.sent[0]?.raw);
+    expect(raw).toContain(description);
+    expect(raw).toContain("Platform: Android");
+    expect(raw).toContain(`https://dash.example.com/dashboard/${projectSlug}/bugs/${created.id}`);
+    // A 2,000-character description stays within SMTP's line length limit.
+    expect(Math.max(...(email.sent[0]?.raw ?? "").split(/\r?\n/).map((line) => line.length))).toBeLessThanOrEqual(998);
+  });
+
+  it("emails the full comment with a direct link to its feature request", async () => {
+    db.state.projects[0]!.notification_email = adminEmail;
+    db.state.wishes.push({
+      id: wishId,
+      project_id: projectId,
+      user_uuid: ownerUuid,
+      title: "Dark mode",
+      description: "Please add a dark theme.",
+      state: "pending",
+      created_at: "2026-04-09T08:00:00.000Z",
+      updated_at: "2026-04-09T08:00:00.000Z",
+    });
+    const comment = `Grüße aus Köln — ${"I scan cards at night and the white screen is blinding. ".repeat(30)}Thanks!`.slice(0, 2_000);
+
+    const response = await requestApp(
+      "/api/comment/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wishkit-api-key": apiKey,
+          "x-wishkit-uuid": commenterUuid,
+        },
+        body: JSON.stringify({ wishId, description: comment }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const raw = decodedBody(email.sent[0]?.raw);
+    expect(raw).toContain(comment);
+    expect(raw).toContain(`https://dash.example.com/dashboard/${projectSlug}/features/${wishId}`);
   });
 
   it("does not email about a comment when the project has no notification email", async () => {

@@ -6,6 +6,7 @@ import { isScreenshotKeyForProject } from "#/server/bug-constants";
 import { createBug } from "#/server/db";
 import { parseJson, sdkError } from "#/server/http";
 import { sendBugNotification } from "#/server/notifications";
+import { platformFromRequest } from "#/server/platform";
 import { enforceSdkRateLimit } from "#/server/rate-limit";
 import { requireRequestContext } from "#/server/route-context";
 
@@ -59,11 +60,13 @@ export const Route = createFileRoute("/api/bug/create")({
           }
         }
 
+        const platform = platformFromRequest(request);
         const response = await createBug(
           requestContext.env.DB,
           projectResult.project,
           userResult.uuid,
           bodyResult.data,
+          platform,
         );
 
         if (projectResult.project.notification_email) {
@@ -74,6 +77,7 @@ export const Route = createFileRoute("/api/bug/create")({
             userUUID: userResult.uuid,
             reporterEmail: bodyResult.data.email ?? null,
             screenshotKeys: keys,
+            platform,
           }).catch(() => {
             // ignore — email failures must not break SDK responses
           });

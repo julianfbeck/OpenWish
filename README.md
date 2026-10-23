@@ -12,7 +12,10 @@ OpenWish is a **self-hosted Cloudflare backend, admin dashboard, and Swift SDK f
 | Wishes (feature requests) | ✅ | ✅ — same Swift SDK contract |
 | Bug + card-data reports with screenshots | ❌ | ✅ R2-backed, up to 4 per issue |
 | User-visible "my bug reports" with admin replies | ❌ | ✅ |
-| Email notifications on new wishes / bugs / user comments | ❌ | ✅ via Cloudflare Email Routing |
+| Email notifications on new wishes / bugs / user comments | ❌ | ✅ via Cloudflare Email Routing — full text plus a direct link to the item |
+| Direct dashboard links per feature request / bug | ❌ | ✅ `/dashboard/<slug>/features/<id>`, `/dashboard/<slug>/bugs/<id>` |
+| iOS / Android tags on feedback | ❌ | ✅ from the SDK that submitted it |
+| GitHub issue / PR links on feedback | ❌ | ✅ linked by agents over MCP |
 | Per-project notification email + send-test from the dashboard | ❌ | ✅ |
 | Single-user dashboard auth | password only | password **+ passkeys** (WebAuthn, multi-device) |
 | Rate limiting per device + per project | ❌ | ✅ Workers KV–backed fixed windows |
@@ -112,12 +115,12 @@ The Worker implements a stateless Streamable HTTP MCP server at
   and requires reconnecting.
 - **Global API key for trusted clients:** send
   `Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>`. This retains full access to
-  all projects and all 20 tools, including project creation. The dashboard shows
+  all projects and all 22 tools, including project creation. The dashboard shows
   the MCP URL and masked/revealable key under **Projects → Agent access (MCP)**.
 
 The tools cover project settings and analytics, feature and issue management,
-state transitions, reporter replies, merges, private notes, screenshots, and
-test email. OAuth grants apply to selected immutable project IDs; they cannot
+state transitions, reporter replies, merges, private notes, screenshots,
+linking GitHub issues and pull requests to features and issues, and test email. OAuth grants apply to selected immutable project IDs; they cannot
 create new projects. Replies and resolution changes can email reporters.
 
 For a read-only ChatGPT connection, use `mcp:read offline_access` if its OAuth

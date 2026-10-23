@@ -4,21 +4,26 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const routeState = vi.hoisted(() => ({
-  params: { slug: "atlas" },
+  params: { slug: "atlas" } as Record<string, string>,
   pathname: "/dashboard/atlas",
+  navigate: vi.fn(),
 }));
 
 const apiMocks = vi.hoisted(() => ({
+  createAdminBugComment: vi.fn(),
   createAdminComment: vi.fn(),
   createAdminProject: vi.fn(),
+  deleteAdminBug: vi.fn(),
   deleteAdminProject: vi.fn(),
   deleteAdminWish: vi.fn(),
   fetchAdminAnalytics: vi.fn(),
+  fetchAdminBugs: vi.fn(),
   fetchAdminProject: vi.fn(),
   fetchDashboardSession: vi.fn(),
   loginDashboard: vi.fn(),
   logoutDashboard: vi.fn(),
   mergeAdminWish: vi.fn(),
+  updateAdminBug: vi.fn(),
   updateAdminWish: vi.fn(),
   updateProjectSettings: vi.fn(),
   updateWishState: vi.fn(),
@@ -45,6 +50,8 @@ vi.mock("@tanstack/react-router", async () => {
       </a>
     ),
     Outlet: () => null,
+    useNavigate: () => routeState.navigate,
+    useParams: () => routeState.params,
     useRouterState: ({ select }: any) =>
       select({ location: { pathname: routeState.pathname } }),
     createFileRoute: () => (options: any) => ({
@@ -60,16 +67,20 @@ vi.mock("#/lib/api", async () => {
 
   return {
     ...actual,
+    createAdminBugComment: apiMocks.createAdminBugComment,
     createAdminComment: apiMocks.createAdminComment,
     createAdminProject: apiMocks.createAdminProject,
+    deleteAdminBug: apiMocks.deleteAdminBug,
     deleteAdminProject: apiMocks.deleteAdminProject,
     deleteAdminWish: apiMocks.deleteAdminWish,
     fetchAdminAnalytics: apiMocks.fetchAdminAnalytics,
+    fetchAdminBugs: apiMocks.fetchAdminBugs,
     fetchAdminProject: apiMocks.fetchAdminProject,
     fetchDashboardSession: apiMocks.fetchDashboardSession,
     loginDashboard: apiMocks.loginDashboard,
     logoutDashboard: apiMocks.logoutDashboard,
     mergeAdminWish: apiMocks.mergeAdminWish,
+    updateAdminBug: apiMocks.updateAdminBug,
     updateAdminWish: apiMocks.updateAdminWish,
     updateProjectSettings: apiMocks.updateProjectSettings,
     updateWishState: apiMocks.updateWishState,
@@ -90,6 +101,7 @@ vi.mock("#/lib/navigation", async () => {
 
 import { DashboardAnalyticsPage } from "../src/routes/dashboard.$slug.analytics";
 import { DashboardBoardPage, DashboardSlugRouteLayout } from "../src/routes/dashboard.$slug";
+import { DashboardBugsPage } from "../src/routes/dashboard.$slug.bugs";
 import { DashboardProjectsPage } from "../src/routes/dashboard.projects";
 import { LoginPage } from "../src/routes/login";
 
@@ -122,7 +134,19 @@ const adminProjectResponse = {
         },
       ],
       description: "Search feedback by account segment.",
+      githubLinks: [
+        {
+          createdAt: "2026-04-09T11:00:00.000Z",
+          id: "link-1",
+          number: 42,
+          repository: "acme/atlas",
+          title: "Add segment search",
+          type: "pull",
+          url: "https://github.com/acme/atlas/pull/42",
+        },
+      ],
       id: "wish-1",
+      platform: "ios",
       state: "pending",
       title: "Faster search",
       userUUID: "11111111-1111-4111-8111-111111111111",
@@ -139,6 +163,27 @@ const adminProjectResponse = {
     watermarkEnabled: false,
   },
 };
+
+function bugFixture(id: string, title: string, createdAt: string, extra: Record<string, unknown> = {}) {
+  return {
+    commentList: [],
+    context: {},
+    createdAt,
+    description: `${title} details`,
+    githubLinks: [],
+    id,
+    kind: "bug",
+    platform: null,
+    reporterEmail: null,
+    screenshotKeys: [],
+    state: "open",
+    title,
+    updatedAt: createdAt,
+    userUUID: "33333333-3333-4333-8333-333333333333",
+    card: null,
+    ...extra,
+  };
+}
 
 const analyticsResponse = {
   project: {
@@ -167,6 +212,7 @@ describe("web routes", () => {
     vi.restoreAllMocks();
     routeState.params = { slug: "atlas" };
     routeState.pathname = "/dashboard/atlas";
+    routeState.navigate.mockReset();
     window.localStorage.clear();
 
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
@@ -344,15 +390,94 @@ describe("web routes", () => {
     expect(navigationMocks.assignLocation).toHaveBeenCalledWith("/dashboard/new-atlas");
   });
 
-  it("renders the board route and opens the request detail dialog", async () => {
+  it("renders the board route and opens a request at its own URL", async () => {
     render(<DashboardBoardPage />);
 
     expect(await screen.findByText("Faster search")).toBeTruthy();
+    expect(screen.getByText("iOS")).toBeTruthy();
+    expect(screen.getByText("1 GitHub")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /faster search/i }));
 
+    expect(routeState.navigate).toHaveBeenCalledWith({
+      to: "/dashboard/$slug/features/$featureId",
+      params: { slug: "atlas", featureId: "wish-1" },
+      resetScroll: false,
+    });
+  });
+
+  it("opens the request named in the URL and closes back to the board", async () => {
+    routeState.params = { slug: "atlas", featureId: "wish-1" };
+    routeState.pathname = "/dashboard/atlas/features/wish-1";
+    render(<DashboardBoardPage />);
+
     expect(await screen.findByRole("button", { name: /update/i })).toBeTruthy();
     expect(screen.getByText("11111111-1111-4111-8111-111111111111")).toBeTruthy();
+    expect(screen.getByText("Add segment search").closest("a")?.getAttribute("href")).toBe(
+      "https://github.com/acme/atlas/pull/42",
+    );
+    expect(screen.getByRole("button", { name: /copy link/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(routeState.navigate).toHaveBeenCalledWith({
+      to: "/dashboard/$slug",
+      params: { slug: "atlas" },
+      resetScroll: false,
+    });
+  });
+
+  it("explains when a linked request no longer exists", async () => {
+    routeState.params = { slug: "atlas", featureId: "44444444-4444-4444-8444-444444444444" };
+    render(<DashboardBoardPage />);
+
+    expect(await screen.findByText(/feature request no longer exists/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /update/i })).toBeNull();
+  });
+
+  it("lists bugs newest first with their platform", async () => {
+    apiMocks.fetchAdminBugs.mockResolvedValue({
+      list: [
+        bugFixture("bug-mid", "Middle bug", "2026-04-08T12:00:00.000Z"),
+        bugFixture("bug-new", "Newest bug", "2026-04-09T09:30:00.000Z", { platform: "android" }),
+        bugFixture("bug-old", "Oldest bug", "2026-04-01T08:00:00.000Z", { platform: "ios" }),
+      ],
+    });
+    routeState.pathname = "/dashboard/atlas/bugs";
+    render(<DashboardBugsPage />);
+
+    await screen.findByText("Newest bug");
+    const titles = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent ?? "")
+      .filter((text) => text.includes(" bug"))
+      .map((text) => text.match(/(Newest|Middle|Oldest) bug/)?.[0]);
+    expect(titles).toEqual(["Newest bug", "Middle bug", "Oldest bug"]);
+    expect(screen.getByText("Android")).toBeTruthy();
+    expect(screen.getByText("iOS")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /middle bug/i }));
+    expect(routeState.navigate).toHaveBeenCalledWith({
+      to: "/dashboard/$slug/bugs/$bugId",
+      params: { slug: "atlas", bugId: "bug-mid" },
+      resetScroll: false,
+    });
+  });
+
+  it("opens a bug from its URL even when it is outside the current filter", async () => {
+    apiMocks.fetchAdminBugs.mockResolvedValue({
+      list: [
+        bugFixture("bug-open", "Open bug", "2026-04-09T09:30:00.000Z"),
+        bugFixture("bug-fixed", "Fixed crash", "2026-04-02T09:30:00.000Z", { state: "fixed" }),
+      ],
+    });
+    routeState.params = { slug: "atlas", bugId: "bug-fixed" };
+    routeState.pathname = "/dashboard/atlas/bugs/bug-fixed";
+    render(<DashboardBugsPage />);
+
+    expect(await screen.findByDisplayValue("Fixed crash")).toBeTruthy();
+    // The list behind the (modal) dialog switched to the bug's state.
+    expect(screen.getByRole("button", { name: /fixed crash/i, hidden: true })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /open bug/i, hidden: true })).toBeNull();
   });
 
   it("renders the analytics route with summary cards", async () => {

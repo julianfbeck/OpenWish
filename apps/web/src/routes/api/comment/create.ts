@@ -63,6 +63,7 @@ export const Route = createFileRoute("/api/comment/create")({
             .then((wish) =>
               sendCommentNotification(requestContext.env, project, {
                 kind: "wish",
+                id: bodyResult.data.wishId,
                 title: wish?.title ?? "Untitled",
                 description: bodyResult.data.description,
                 userUUID: userResult.uuid,

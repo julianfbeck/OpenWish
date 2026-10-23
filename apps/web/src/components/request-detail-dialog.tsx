@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
+import { CopyLinkButton, GitHubLinkList, PlatformBadge } from "#/components/feedback-meta";
 import { ReporterNotificationNotice } from "#/components/reporter-notification-notice";
 import {
   Dialog,
@@ -39,6 +40,7 @@ type RequestDetailDialogProps = {
   wish: WishResponse | null;
   allWishes: WishResponse[];
   projectCreatedAt?: string;
+  permalink?: string;
   onWishSave: (input: { title: string; description: string }) => Promise<void> | void;
   onStateChange: (state: WishState) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
   onCommentCreate: (description: string) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
@@ -55,6 +57,7 @@ export function RequestDetailDialog({
   onOpenChange,
   wish,
   allWishes,
+  permalink,
   onWishSave,
   onStateChange,
   onCommentCreate,
@@ -146,7 +149,10 @@ export function RequestDetailDialog({
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-medium text-white">Created by</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-white">Created by</p>
+                <PlatformBadge platform={wish.platform} />
+              </div>
               <p className="break-all text-[11px] text-neutral-500">
                 User ID: <span className="text-neutral-300">{wish.userUUID}</span>
               </p>
@@ -337,6 +343,7 @@ export function RequestDetailDialog({
           {/* ── Right: metadata + actions ───────────────────────────────── */}
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-l border-white/10 p-5">
             <ReporterNotificationNotice status={reporterNotification} error={actionError} />
+            {permalink ? <CopyLinkButton url={permalink} /> : null}
             <MetadataRow label="Upvotes" value={String(wish.votingUsers.length)} />
             <MetadataRow label="Comments" value={String(wish.commentList.length)} />
             <div className="flex items-center justify-between gap-2">
@@ -373,6 +380,8 @@ export function RequestDetailDialog({
             {isUpdatingState ? (
               <p className="-mt-2 text-right text-[11px] text-neutral-500">Updating…</p>
             ) : null}
+
+            <GitHubLinkList links={wish.githubLinks} />
 
             <div className="border-t border-white/10 pt-4">
               <button

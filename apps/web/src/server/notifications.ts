@@ -1,3 +1,4 @@
+import { platformLabels, type Platform } from "@openwish/shared";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 
@@ -20,11 +21,29 @@ function dashboardBase(env: Bindings) {
   return (env.OPENWISH_DASHBOARD_URL ?? DEFAULT_DASHBOARD).replace(/\/+$/, "");
 }
 
-function truncate(value: string, max = 240) {
-  if (value.length <= max) {
-    return value;
+// Direct dashboard links to one feature request or issue; the dashboard opens
+// its detail view (after sign-in when needed).
+export function featureDashboardUrl(env: Bindings, slug: string, wishId: string) {
+  return `${dashboardBase(env)}/dashboard/${encodeURIComponent(slug)}/features/${encodeURIComponent(wishId)}`;
+}
+
+export function issueDashboardUrl(env: Bindings, slug: string, bugId: string) {
+  return `${dashboardBase(env)}/dashboard/${encodeURIComponent(slug)}/bugs/${encodeURIComponent(bugId)}`;
+}
+
+function platformLine(platform: Platform | null | undefined): string[] {
+  return platform ? [`Platform: ${platformLabels[platform]}`] : [];
+}
+
+// Emails carry the full feedback text, so a body can hold lines far beyond
+// SMTP's 998-character limit and any language. Base64 in 76-character lines
+// keeps both intact (mimetext sets the header but expects encoded data).
+function base64Body(text: string) {
+  let binary = "";
+  for (const byte of new TextEncoder().encode(text)) {
+    binary += String.fromCharCode(byte);
   }
-  return `${value.slice(0, max - 1)}…`;
+  return btoa(binary).replace(/.{1,76}/g, "$&\r\n").trimEnd();
 }
 
 function buildMessage(input: { from: string; to: string; subject: string; text: string }) {
@@ -32,7 +51,7 @@ function buildMessage(input: { from: string; to: string; subject: string; text: 
   message.setSender({ name: "OpenWish", addr: input.from });
   message.setRecipient(input.to);
   message.setSubject(input.subject);
-  message.addMessage({ contentType: "text/plain", data: input.text });
+  message.addMessage({ contentType: "text/plain", encoding: "base64", data: base64Body(input.text) });
   return new EmailMessage(input.from, input.to, message.asRaw());
 }
 
@@ -60,7 +79,7 @@ export async function sendTestEmail(env: Bindings, to: string, project: ProjectR
 export async function sendWishNotification(
   env: Bindings,
   project: ProjectRow,
-  wish: { id: string; title: string; description: string; userUUID: string },
+  wish: { id: string; title: string; description: string; userUUID: string; platform?: Platform | null },
 ) {
   if (!project.notification_email) {
     return;
@@ -74,11 +93,14 @@ export async function sendWishNotification(
       `A new feature request was submitted to ${project.name}.`,
       ``,
       `Title: ${wish.title}`,
-      `Description: ${truncate(wish.description)}`,
+      ...platformLine(wish.platform),
       `Reporter: ${wish.userUUID}`,
       ``,
-      `Open the board:`,
-      `${dashboardBase(env)}/dashboard/${project.slug}`,
+      `Description:`,
+      wish.description,
+      ``,
+      `Open it in the dashboard:`,
+      featureDashboardUrl(env, project.slug, wish.id),
     ].join("\n"),
   );
 }
@@ -93,6 +115,7 @@ export async function sendBugNotification(
     userUUID: string;
     reporterEmail?: string | null;
     screenshotKeys: string[];
+    platform?: Platform | null;
   },
 ) {
   if (!project.notification_email) {
@@ -116,12 +139,15 @@ export async function sendBugNotification(
       `A new bug report was submitted to ${project.name}.`,
       ``,
       `Title: ${bug.title}`,
-      `Description: ${truncate(bug.description)}`,
+      ...platformLine(bug.platform),
       reporterContact,
       screenshotLine,
       ``,
-      `Open the bug list:`,
-      `${dashboardBase(env)}/dashboard/${project.slug}/bugs`,
+      `Description:`,
+      bug.description,
+      ``,
+      `Open it in the dashboard:`,
+      issueDashboardUrl(env, project.slug, bug.id),
     ].join("\n"),
   );
 }
@@ -131,6 +157,8 @@ export async function sendCommentNotification(
   project: ProjectRow,
   comment: {
     kind: "wish" | "bug";
+    // The feature request or issue the comment was posted on.
+    id: string;
     title: string;
     description: string;
     userUUID: string;
@@ -142,8 +170,8 @@ export async function sendCommentNotification(
 
   const isBug = comment.kind === "bug";
   const link = isBug
-    ? `${dashboardBase(env)}/dashboard/${project.slug}/bugs`
-    : `${dashboardBase(env)}/dashboard/${project.slug}`;
+    ? issueDashboardUrl(env, project.slug, comment.id)
+    : featureDashboardUrl(env, project.slug, comment.id);
 
   await send(
     env,
@@ -153,8 +181,10 @@ export async function sendCommentNotification(
       `A new comment was posted on a ${isBug ? "bug report" : "feature request"} in ${project.name}.`,
       ``,
       `${isBug ? "Bug report" : "Feature request"}: ${comment.title}`,
-      `Comment: ${truncate(comment.description, 1_000)}`,
       `Commenter: ${comment.userUUID}`,
+      ``,
+      `Comment:`,
+      comment.description,
       ``,
       `Open it in the dashboard:`,
       link,
@@ -216,7 +246,7 @@ export async function sendReporterCommentEmail(
     "",
     `"${input.title}"`,
     "",
-    truncate(input.comment, 1_000),
+    input.comment,
   ];
   if (input.link) {
     lines.push("", `View it: ${input.link}`);

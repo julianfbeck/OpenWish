@@ -135,7 +135,7 @@ pnpm run deploy
 | --- | --- | --- |
 | `OPENWISH_CORS_ORIGIN` | recommended | Restrict the dashboard SPA's allowed origin. `*` is fine in dev. |
 | `OPENWISH_NOTIFICATION_FROM` | required to send emails | Must be on a domain with Email Routing **active**. The recipient still has to be a verified destination address. |
-| `OPENWISH_DASHBOARD_URL` | recommended | Public URL the dashboard is served from — used to build the deep-link in notification emails AND as the WebAuthn `expectedOrigin`. |
+| `OPENWISH_DASHBOARD_URL` | recommended | Public URL the dashboard is served from — used to build the direct links in notification emails (`/dashboard/<slug>/features/<id>` and `/dashboard/<slug>/bugs/<id>`) AND as the WebAuthn `expectedOrigin`. |
 | `OPENWISH_MCP_OAUTH_ORIGIN` | required for OAuth | Fixed public HTTPS origin for OAuth discovery and endpoints, for example `https://wishkit.juli.sh`. It must match the host used by the MCP client. |
 | `OPENWISH_DASHBOARD_SESSION_DAYS` | optional | Dashboard session lifetime in days (default `30`). The session slides — every dashboard load re-issues the cookie — so you stay signed in as long as you visit within the window. |
 | `OPENWISH_PASSKEY_RP_ID` | required for passkeys | Must equal the host (no scheme, no port). E.g. `wishkit.example.com`. |
@@ -161,7 +161,7 @@ pnpm run deploy
 
 When an admin **replies to** or marks a bug **fixed** / a feature request **implemented** in the dashboard, OpenWish emails the person who reported it. These are separate from the admin notifications above:
 
-- **Admin notifications** (new wish/bug or user comment landed) go to your own verified inbox over Email Routing (`NOTIFICATION_EMAIL`).
+- **Admin notifications** (new wish/bug or user comment landed) go to your own verified inbox over Email Routing (`NOTIFICATION_EMAIL`). They contain the full text, the submitting platform (iOS/Android) when known, and a direct link to that feature request or bug in the dashboard.
 - **Reporter notifications** go to arbitrary end-user addresses, which Email Routing cannot do — so they use **[Cloudflare Email Service](https://developers.cloudflare.com/email-routing/email-workers/)** (the transactional HTTP API, public beta).
 
 Prerequisites:
@@ -267,10 +267,15 @@ project-scoped OAuth access tokens through the standard `Authorization` header.
 Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>
 ```
 
-The 20 tools expose the dashboard's complete operational surface: project
+The 22 tools expose the dashboard's complete operational surface: project
 CRUD/settings and analytics; feature creation, editing, workflow, replies,
 merge, and deletion; bug/card-data issue creation, editing, workflow, replies,
-private notes, screenshot reads, and deletion; plus test email. Reply and done
+private notes, screenshot reads, and deletion; linking GitHub issues and pull
+requests to features and issues (`openwish_link_github` /
+`openwish_unlink_github`, write permission); plus test email. Linked GitHub
+items appear in the dashboard and in the `githubLinks` field of
+`openwish_get_project` and `openwish_list_issues`, next to each item's
+`platform` (`ios`, `android` or `null`). Reply and done
 tools preserve dashboard side effects, including reporter emails and explicit
 `reporterNotification` results. Destructive tools are annotated and project
 deletion requires the slug twice.
@@ -401,6 +406,15 @@ pnpm exec wrangler d1 migrations apply openwish --remote
 Migration `0009_v2_issues.sql` must be applied before V2 clients submit
 diagnostic context, card-data issues, or MCP private notes. The legacy
 WishKit-compatible endpoints continue working before and after this migration.
+
+Migration `0010_platform_github_links.sql` adds the iOS/Android platform of each
+feature request and issue (from the SDK's `x-wishkit-sdk-kind` header) and
+backfills existing rows: from V2 issue context, from the Swift SDK's uppercase
+user UUIDs, and for lowercase UUIDs from the same device's Android issues or a
+user row older than the submission. Web-form, MCP and CLI submissions stay
+untagged. Until it is applied, SDK submissions keep working and the dashboard
+simply shows no platform tags. The GitHub links table is created by the
+runtime schema mirror as well.
 
 ---
 

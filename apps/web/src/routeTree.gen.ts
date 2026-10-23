@@ -35,7 +35,7 @@ import { Route as ApiV2IssuesRouteImport } from './routes/api/v2/issues'
 import { Route as ApiWishCreateRouteImport } from './routes/api/wish/create'
 import { Route as ApiWishListRouteImport } from './routes/api/wish/list'
 import { Route as ApiWishVoteRouteImport } from './routes/api/wish/vote'
-import { Route as DashboardSlugIndexRouteImport } from './routes/dashboard.$slug.index'
+import { Route as DashboardSlugBoardRouteImport } from './routes/dashboard.$slug._board'
 import { Route as DashboardSlugAnalyticsRouteImport } from './routes/dashboard.$slug.analytics'
 import { Route as DashboardSlugBugsRouteImport } from './routes/dashboard.$slug.bugs'
 import { Route as DashboardSlugSettingsRouteImport } from './routes/dashboard.$slug.settings'
@@ -46,6 +46,8 @@ import { Route as ApiAuthPasskeyCredentialIdRouteImport } from './routes/api/aut
 import { Route as ApiAuthPasskeySummaryRouteImport } from './routes/api/auth/passkey/summary'
 import { Route as ApiPublicFeedbackSlugRouteImport } from './routes/api/public/feedback/$slug'
 import { Route as ApiPublicProjectsSlugRouteImport } from './routes/api/public/projects/$slug'
+import { Route as DashboardSlugBoardIndexRouteImport } from './routes/dashboard.$slug._board.index'
+import { Route as DashboardSlugBugsBugIdRouteImport } from './routes/dashboard.$slug.bugs.$bugId'
 import { Route as ApiAdminProjectsSlugAnalyticsRouteImport } from './routes/api/admin/projects/$slug/analytics'
 import { Route as ApiAdminProjectsSlugBugsRouteImport } from './routes/api/admin/projects/$slug/bugs'
 import { Route as ApiAdminProjectsSlugSettingsRouteImport } from './routes/api/admin/projects/$slug/settings'
@@ -56,6 +58,7 @@ import { Route as ApiAuthPasskeyRegisterOptionsRouteImport } from './routes/api/
 import { Route as ApiAuthPasskeyRegisterVerifyRouteImport } from './routes/api/auth/passkey/register/verify'
 import { Route as ApiV1ProjectsSlugBugsRouteImport } from './routes/api/v1/projects/$slug/bugs'
 import { Route as ApiV1ProjectsSlugWishesRouteImport } from './routes/api/v1/projects/$slug/wishes'
+import { Route as DashboardSlugBoardFeaturesFeatureIdRouteImport } from './routes/dashboard.$slug._board.features.$featureId'
 import { Route as ApiAdminProjectsSlugBugsBugIdRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId'
 import { Route as ApiAdminProjectsSlugWishesWishIdRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId'
 import { Route as ApiAdminProjectsSlugBugsBugIdCommentsRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -194,9 +197,8 @@ const ApiWishVoteRoute = ApiWishVoteRouteImport.update({
   path: '/api/wish/vote',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardSlugIndexRoute = DashboardSlugIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardSlugBoardRoute = DashboardSlugBoardRouteImport.update({
+  id: '/_board',
   getParentRoute: () => DashboardSlugRoute,
 } as any)
 const DashboardSlugAnalyticsRoute = DashboardSlugAnalyticsRouteImport.update({
@@ -250,6 +252,16 @@ const ApiPublicProjectsSlugRoute = ApiPublicProjectsSlugRouteImport.update({
   id: '/api/public/projects/$slug',
   path: '/api/public/projects/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardSlugBoardIndexRoute = DashboardSlugBoardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardSlugBoardRoute,
+} as any)
+const DashboardSlugBugsBugIdRoute = DashboardSlugBugsBugIdRouteImport.update({
+  id: '/$bugId',
+  path: '/$bugId',
+  getParentRoute: () => DashboardSlugBugsRoute,
 } as any)
 const ApiAdminProjectsSlugAnalyticsRoute =
   ApiAdminProjectsSlugAnalyticsRouteImport.update({
@@ -309,6 +321,12 @@ const ApiV1ProjectsSlugWishesRoute = ApiV1ProjectsSlugWishesRouteImport.update({
   path: '/$slug/wishes',
   getParentRoute: () => ApiV1ProjectsRoute,
 } as any)
+const DashboardSlugBoardFeaturesFeatureIdRoute =
+  DashboardSlugBoardFeaturesFeatureIdRouteImport.update({
+    id: '/features/$featureId',
+    path: '/features/$featureId',
+    getParentRoute: () => DashboardSlugBoardRoute,
+  } as any)
 const ApiAdminProjectsSlugBugsBugIdRoute =
   ApiAdminProjectsSlugBugsBugIdRouteImport.update({
     id: '/$bugId',
@@ -380,16 +398,17 @@ export interface FileRoutesByFullPath {
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
   '/dashboard/$slug/analytics': typeof DashboardSlugAnalyticsRoute
-  '/dashboard/$slug/bugs': typeof DashboardSlugBugsRoute
+  '/dashboard/$slug/bugs': typeof DashboardSlugBugsRouteWithChildren
   '/dashboard/$slug/settings': typeof DashboardSlugSettingsRoute
-  '/dashboard/$slug/': typeof DashboardSlugIndexRoute
   '/api/admin/projects/$slug': typeof ApiAdminProjectsSlugRouteWithChildren
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
   '/api/auth/passkey/summary': typeof ApiAuthPasskeySummaryRoute
   '/api/public/feedback/$slug': typeof ApiPublicFeedbackSlugRoute
   '/api/public/projects/$slug': typeof ApiPublicProjectsSlugRoute
+  '/dashboard/$slug/bugs/$bugId': typeof DashboardSlugBugsBugIdRoute
   '/api/auth/passkey/': typeof ApiAuthPasskeyIndexRoute
+  '/dashboard/$slug/': typeof DashboardSlugBoardIndexRoute
   '/api/admin/projects/$slug/analytics': typeof ApiAdminProjectsSlugAnalyticsRoute
   '/api/admin/projects/$slug/bugs': typeof ApiAdminProjectsSlugBugsRouteWithChildren
   '/api/admin/projects/$slug/settings': typeof ApiAdminProjectsSlugSettingsRoute
@@ -400,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/passkey/register/verify': typeof ApiAuthPasskeyRegisterVerifyRoute
   '/api/v1/projects/$slug/bugs': typeof ApiV1ProjectsSlugBugsRoute
   '/api/v1/projects/$slug/wishes': typeof ApiV1ProjectsSlugWishesRoute
+  '/dashboard/$slug/features/$featureId': typeof DashboardSlugBoardFeaturesFeatureIdRoute
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
@@ -414,6 +434,7 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/admin/$slug': typeof AdminSlugRoute
+  '/dashboard/$slug': typeof DashboardSlugBoardIndexRoute
   '/dashboard/projects': typeof DashboardProjectsRoute
   '/feedback/$slug': typeof FeedbackSlugRoute
   '/api/admin/projects': typeof ApiAdminProjectsRouteWithChildren
@@ -435,15 +456,15 @@ export interface FileRoutesByTo {
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
   '/dashboard/$slug/analytics': typeof DashboardSlugAnalyticsRoute
-  '/dashboard/$slug/bugs': typeof DashboardSlugBugsRoute
+  '/dashboard/$slug/bugs': typeof DashboardSlugBugsRouteWithChildren
   '/dashboard/$slug/settings': typeof DashboardSlugSettingsRoute
-  '/dashboard/$slug': typeof DashboardSlugIndexRoute
   '/api/admin/projects/$slug': typeof ApiAdminProjectsSlugRouteWithChildren
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
   '/api/auth/passkey/summary': typeof ApiAuthPasskeySummaryRoute
   '/api/public/feedback/$slug': typeof ApiPublicFeedbackSlugRoute
   '/api/public/projects/$slug': typeof ApiPublicProjectsSlugRoute
+  '/dashboard/$slug/bugs/$bugId': typeof DashboardSlugBugsBugIdRoute
   '/api/auth/passkey': typeof ApiAuthPasskeyIndexRoute
   '/api/admin/projects/$slug/analytics': typeof ApiAdminProjectsSlugAnalyticsRoute
   '/api/admin/projects/$slug/bugs': typeof ApiAdminProjectsSlugBugsRouteWithChildren
@@ -455,6 +476,7 @@ export interface FileRoutesByTo {
   '/api/auth/passkey/register/verify': typeof ApiAuthPasskeyRegisterVerifyRoute
   '/api/v1/projects/$slug/bugs': typeof ApiV1ProjectsSlugBugsRoute
   '/api/v1/projects/$slug/wishes': typeof ApiV1ProjectsSlugWishesRoute
+  '/dashboard/$slug/features/$featureId': typeof DashboardSlugBoardFeaturesFeatureIdRoute
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
@@ -491,17 +513,19 @@ export interface FileRoutesById {
   '/api/wish/create': typeof ApiWishCreateRoute
   '/api/wish/list': typeof ApiWishListRoute
   '/api/wish/vote': typeof ApiWishVoteRoute
+  '/dashboard/$slug/_board': typeof DashboardSlugBoardRouteWithChildren
   '/dashboard/$slug/analytics': typeof DashboardSlugAnalyticsRoute
-  '/dashboard/$slug/bugs': typeof DashboardSlugBugsRoute
+  '/dashboard/$slug/bugs': typeof DashboardSlugBugsRouteWithChildren
   '/dashboard/$slug/settings': typeof DashboardSlugSettingsRoute
-  '/dashboard/$slug/': typeof DashboardSlugIndexRoute
   '/api/admin/projects/$slug': typeof ApiAdminProjectsSlugRouteWithChildren
   '/api/admin/projects/bootstrap': typeof ApiAdminProjectsBootstrapRoute
   '/api/auth/passkey/$credentialId': typeof ApiAuthPasskeyCredentialIdRoute
   '/api/auth/passkey/summary': typeof ApiAuthPasskeySummaryRoute
   '/api/public/feedback/$slug': typeof ApiPublicFeedbackSlugRoute
   '/api/public/projects/$slug': typeof ApiPublicProjectsSlugRoute
+  '/dashboard/$slug/bugs/$bugId': typeof DashboardSlugBugsBugIdRoute
   '/api/auth/passkey/': typeof ApiAuthPasskeyIndexRoute
+  '/dashboard/$slug/_board/': typeof DashboardSlugBoardIndexRoute
   '/api/admin/projects/$slug/analytics': typeof ApiAdminProjectsSlugAnalyticsRoute
   '/api/admin/projects/$slug/bugs': typeof ApiAdminProjectsSlugBugsRouteWithChildren
   '/api/admin/projects/$slug/settings': typeof ApiAdminProjectsSlugSettingsRoute
@@ -512,6 +536,7 @@ export interface FileRoutesById {
   '/api/auth/passkey/register/verify': typeof ApiAuthPasskeyRegisterVerifyRoute
   '/api/v1/projects/$slug/bugs': typeof ApiV1ProjectsSlugBugsRoute
   '/api/v1/projects/$slug/wishes': typeof ApiV1ProjectsSlugWishesRoute
+  '/dashboard/$slug/_board/features/$featureId': typeof DashboardSlugBoardFeaturesFeatureIdRoute
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
@@ -552,14 +577,15 @@ export interface FileRouteTypes {
     | '/dashboard/$slug/analytics'
     | '/dashboard/$slug/bugs'
     | '/dashboard/$slug/settings'
-    | '/dashboard/$slug/'
     | '/api/admin/projects/$slug'
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
     | '/api/auth/passkey/summary'
     | '/api/public/feedback/$slug'
     | '/api/public/projects/$slug'
+    | '/dashboard/$slug/bugs/$bugId'
     | '/api/auth/passkey/'
+    | '/dashboard/$slug/'
     | '/api/admin/projects/$slug/analytics'
     | '/api/admin/projects/$slug/bugs'
     | '/api/admin/projects/$slug/settings'
@@ -570,6 +596,7 @@ export interface FileRouteTypes {
     | '/api/auth/passkey/register/verify'
     | '/api/v1/projects/$slug/bugs'
     | '/api/v1/projects/$slug/wishes'
+    | '/dashboard/$slug/features/$featureId'
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -584,6 +611,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/login'
     | '/admin/$slug'
+    | '/dashboard/$slug'
     | '/dashboard/projects'
     | '/feedback/$slug'
     | '/api/admin/projects'
@@ -607,13 +635,13 @@ export interface FileRouteTypes {
     | '/dashboard/$slug/analytics'
     | '/dashboard/$slug/bugs'
     | '/dashboard/$slug/settings'
-    | '/dashboard/$slug'
     | '/api/admin/projects/$slug'
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
     | '/api/auth/passkey/summary'
     | '/api/public/feedback/$slug'
     | '/api/public/projects/$slug'
+    | '/dashboard/$slug/bugs/$bugId'
     | '/api/auth/passkey'
     | '/api/admin/projects/$slug/analytics'
     | '/api/admin/projects/$slug/bugs'
@@ -625,6 +653,7 @@ export interface FileRouteTypes {
     | '/api/auth/passkey/register/verify'
     | '/api/v1/projects/$slug/bugs'
     | '/api/v1/projects/$slug/wishes'
+    | '/dashboard/$slug/features/$featureId'
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -660,17 +689,19 @@ export interface FileRouteTypes {
     | '/api/wish/create'
     | '/api/wish/list'
     | '/api/wish/vote'
+    | '/dashboard/$slug/_board'
     | '/dashboard/$slug/analytics'
     | '/dashboard/$slug/bugs'
     | '/dashboard/$slug/settings'
-    | '/dashboard/$slug/'
     | '/api/admin/projects/$slug'
     | '/api/admin/projects/bootstrap'
     | '/api/auth/passkey/$credentialId'
     | '/api/auth/passkey/summary'
     | '/api/public/feedback/$slug'
     | '/api/public/projects/$slug'
+    | '/dashboard/$slug/bugs/$bugId'
     | '/api/auth/passkey/'
+    | '/dashboard/$slug/_board/'
     | '/api/admin/projects/$slug/analytics'
     | '/api/admin/projects/$slug/bugs'
     | '/api/admin/projects/$slug/settings'
@@ -681,6 +712,7 @@ export interface FileRouteTypes {
     | '/api/auth/passkey/register/verify'
     | '/api/v1/projects/$slug/bugs'
     | '/api/v1/projects/$slug/wishes'
+    | '/dashboard/$slug/_board/features/$featureId'
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
@@ -911,11 +943,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWishVoteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/$slug/': {
-      id: '/dashboard/$slug/'
-      path: '/'
-      fullPath: '/dashboard/$slug/'
-      preLoaderRoute: typeof DashboardSlugIndexRouteImport
+    '/dashboard/$slug/_board': {
+      id: '/dashboard/$slug/_board'
+      path: ''
+      fullPath: '/dashboard/$slug'
+      preLoaderRoute: typeof DashboardSlugBoardRouteImport
       parentRoute: typeof DashboardSlugRoute
     }
     '/dashboard/$slug/analytics': {
@@ -988,6 +1020,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicProjectsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/$slug/_board/': {
+      id: '/dashboard/$slug/_board/'
+      path: '/'
+      fullPath: '/dashboard/$slug/'
+      preLoaderRoute: typeof DashboardSlugBoardIndexRouteImport
+      parentRoute: typeof DashboardSlugBoardRoute
+    }
+    '/dashboard/$slug/bugs/$bugId': {
+      id: '/dashboard/$slug/bugs/$bugId'
+      path: '/$bugId'
+      fullPath: '/dashboard/$slug/bugs/$bugId'
+      preLoaderRoute: typeof DashboardSlugBugsBugIdRouteImport
+      parentRoute: typeof DashboardSlugBugsRoute
+    }
     '/api/admin/projects/$slug/analytics': {
       id: '/api/admin/projects/$slug/analytics'
       path: '/analytics'
@@ -1058,6 +1104,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1ProjectsSlugWishesRouteImport
       parentRoute: typeof ApiV1ProjectsRoute
     }
+    '/dashboard/$slug/_board/features/$featureId': {
+      id: '/dashboard/$slug/_board/features/$featureId'
+      path: '/features/$featureId'
+      fullPath: '/dashboard/$slug/features/$featureId'
+      preLoaderRoute: typeof DashboardSlugBoardFeaturesFeatureIdRouteImport
+      parentRoute: typeof DashboardSlugBoardRoute
+    }
     '/api/admin/projects/$slug/bugs/$bugId': {
       id: '/api/admin/projects/$slug/bugs/$bugId'
       path: '/$bugId'
@@ -1110,18 +1163,43 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DashboardSlugBoardRouteChildren {
+  DashboardSlugBoardIndexRoute: typeof DashboardSlugBoardIndexRoute
+  DashboardSlugBoardFeaturesFeatureIdRoute: typeof DashboardSlugBoardFeaturesFeatureIdRoute
+}
+
+const DashboardSlugBoardRouteChildren: DashboardSlugBoardRouteChildren = {
+  DashboardSlugBoardIndexRoute: DashboardSlugBoardIndexRoute,
+  DashboardSlugBoardFeaturesFeatureIdRoute:
+    DashboardSlugBoardFeaturesFeatureIdRoute,
+}
+
+const DashboardSlugBoardRouteWithChildren =
+  DashboardSlugBoardRoute._addFileChildren(DashboardSlugBoardRouteChildren)
+
+interface DashboardSlugBugsRouteChildren {
+  DashboardSlugBugsBugIdRoute: typeof DashboardSlugBugsBugIdRoute
+}
+
+const DashboardSlugBugsRouteChildren: DashboardSlugBugsRouteChildren = {
+  DashboardSlugBugsBugIdRoute: DashboardSlugBugsBugIdRoute,
+}
+
+const DashboardSlugBugsRouteWithChildren =
+  DashboardSlugBugsRoute._addFileChildren(DashboardSlugBugsRouteChildren)
+
 interface DashboardSlugRouteChildren {
+  DashboardSlugBoardRoute: typeof DashboardSlugBoardRouteWithChildren
   DashboardSlugAnalyticsRoute: typeof DashboardSlugAnalyticsRoute
-  DashboardSlugBugsRoute: typeof DashboardSlugBugsRoute
+  DashboardSlugBugsRoute: typeof DashboardSlugBugsRouteWithChildren
   DashboardSlugSettingsRoute: typeof DashboardSlugSettingsRoute
-  DashboardSlugIndexRoute: typeof DashboardSlugIndexRoute
 }
 
 const DashboardSlugRouteChildren: DashboardSlugRouteChildren = {
+  DashboardSlugBoardRoute: DashboardSlugBoardRouteWithChildren,
   DashboardSlugAnalyticsRoute: DashboardSlugAnalyticsRoute,
-  DashboardSlugBugsRoute: DashboardSlugBugsRoute,
+  DashboardSlugBugsRoute: DashboardSlugBugsRouteWithChildren,
   DashboardSlugSettingsRoute: DashboardSlugSettingsRoute,
-  DashboardSlugIndexRoute: DashboardSlugIndexRoute,
 }
 
 const DashboardSlugRouteWithChildren = DashboardSlugRoute._addFileChildren(

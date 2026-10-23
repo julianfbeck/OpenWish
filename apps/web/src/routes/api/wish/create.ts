@@ -5,6 +5,7 @@ import { requireProjectFromApiKey, requireUserUuid } from "#/server/auth";
 import { createWish, upsertUser } from "#/server/db";
 import { parseJson } from "#/server/http";
 import { sendWishNotification } from "#/server/notifications";
+import { platformFromRequest } from "#/server/platform";
 import { enforceSdkRateLimit } from "#/server/rate-limit";
 import { requireRequestContext } from "#/server/route-context";
 
@@ -48,19 +49,22 @@ export const Route = createFileRoute("/api/wish/create")({
           });
         }
 
+        const platform = platformFromRequest(request);
         const response = await createWish(
           requestContext.env.DB,
           projectResult.project,
           userResult.uuid,
           bodyResult.data,
+          platform,
         );
 
         if (projectResult.project.notification_email) {
           const notify = sendWishNotification(requestContext.env, projectResult.project, {
-            id: "",
+            id: response.id,
             title: bodyResult.data.title,
             description: bodyResult.data.description,
             userUUID: userResult.uuid,
+            platform,
           }).catch(() => {
             // ignore — email failures must not break SDK responses
           });

@@ -12,8 +12,10 @@ import { z } from "zod";
 import { resolveAppStoreMetadata } from "./app-store";
 import { requireMcpBearer, requireProjectBySlug } from "./auth";
 import { isScreenshotKeyForProject } from "./bug-constants";
+import { parseGitHubLink } from "./github-links";
 import { dashboardMcpSubject, mcpAuthChallenge, mcpResource, mcpScopeFor, type McpAccess } from "./mcp-access";
 import {
+  addGitHubLink,
   bootstrapProject,
   createBugComment,
   createComment,
@@ -28,11 +30,13 @@ import {
   getWishMeta,
   loadAdminBugs,
   loadAdminProject,
+  loadGitHubLinksFor,
   loadIssueNotes,
   loadProjectAnalytics,
   loadProjectById,
   loadProjectSummaries,
   mergeWish,
+  removeGitHubLink,
   updateBug,
   updateProjectSettings,
   updateWish,
@@ -44,6 +48,14 @@ import type { Bindings, ProjectRow } from "./types";
 
 const slug = z.string().min(2).max(60).regex(/^[a-z0-9-]+$/).describe("OpenWish project slug");
 const uuid = z.string().uuid();
+const githubTarget = z
+  .enum(["feature", "issue"])
+  .describe("'feature' for a feature request (featureId), 'issue' for a bug or card-data issue (issueId)");
+const githubUrl = z
+  .string()
+  .min(1)
+  .max(500)
+  .describe("GitHub issue or pull request URL, e.g. https://github.com/owner/repo/issues/12 or https://github.com/owner/repo/pull/34");
 
 function result(value: unknown) {
   return {
@@ -449,6 +461,60 @@ function registerTools(server: McpServer, env: Bindings, request: Request, acces
     },
   );
 
+  // GitHub links are stored per feature request or issue and show up in the
+  // dashboard plus the githubLinks field of openwish_get_project/list_issues.
+  async function githubTargetExists(projectId: string, target: "feature" | "issue", targetId: string) {
+    return target === "feature"
+      ? Boolean(await getWishMeta(env.DB, projectId, targetId))
+      : Boolean(await getBugMeta(env.DB, projectId, targetId));
+  }
+
+  registerTool(
+    "openwish_link_github",
+    {
+      title: "Link GitHub issue or pull request",
+      description:
+        "Link a GitHub issue or pull request to a feature request or issue so the dashboard shows it. Linking the same URL again only updates its title. This never notifies the reporter.",
+      inputSchema: z.object({
+        project: slug,
+        target: githubTarget,
+        targetId: uuid.describe("featureId or issueId"),
+        url: githubUrl,
+        title: z.string().min(1).max(200).optional().describe("Title of the GitHub issue or pull request"),
+      }),
+    },
+    async ({ project, target, targetId, url, title }) => {
+      const row = await projectFor(env, project, access);
+      const link = parseGitHubLink(url);
+      if (!link) return failure("url must be a GitHub issue or pull request URL such as https://github.com/owner/repo/issues/12.");
+      if (!(await githubTargetExists(row.id, target, targetId))) {
+        return failure(target === "feature" ? "Feature request not found." : "Issue not found.");
+      }
+      const targetType = target === "feature" ? "wish" : "bug";
+      await addGitHubLink(env.DB, row.id, targetType, targetId, link, title?.trim() || null);
+      return result({ target, targetId, githubLinks: await loadGitHubLinksFor(env.DB, row.id, targetType, targetId) });
+    },
+  );
+
+  registerTool(
+    "openwish_unlink_github",
+    {
+      title: "Unlink GitHub issue or pull request",
+      description: "Remove a linked GitHub issue or pull request from a feature request or issue. The GitHub item itself is untouched.",
+      inputSchema: z.object({ project: slug, target: githubTarget, targetId: uuid.describe("featureId or issueId"), url: githubUrl }),
+    },
+    async ({ project, target, targetId, url }) => {
+      const row = await projectFor(env, project, access);
+      const link = parseGitHubLink(url);
+      if (!link) return failure("url must be a GitHub issue or pull request URL such as https://github.com/owner/repo/issues/12.");
+      const targetType = target === "feature" ? "wish" : "bug";
+      if (!(await removeGitHubLink(env.DB, row.id, targetType, targetId, link.url))) {
+        return failure("That GitHub link is not attached to this item.");
+      }
+      return result({ target, targetId, githubLinks: await loadGitHubLinksFor(env.DB, row.id, targetType, targetId) });
+    },
+  );
+
   registerTool(
     "openwish_delete_issue",
     {
@@ -527,7 +593,7 @@ function createOpenWishMcpServer(env: Bindings, request: Request, access?: McpAc
     { name: "openwish", version: "2.0.0" },
     {
       instructions:
-        "Manage OpenWish projects, feature requests, bugs, card-data issues, replies, notes, analytics, and settings. Confirm destructive actions with the user. Never reveal or repeat the bearer token.",
+        "Manage OpenWish projects, feature requests, bugs, card-data issues, replies, notes, linked GitHub issues and pull requests, analytics, and settings. Confirm destructive actions with the user. Never reveal or repeat the bearer token.",
     },
   );
   registerTools(server, env, request, access);

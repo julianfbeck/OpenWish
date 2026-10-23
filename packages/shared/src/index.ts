@@ -41,6 +41,33 @@ export const commentResponseSchema = z.object({
 });
 export type CommentResponse = z.infer<typeof commentResponseSchema>;
 
+// Platform of the app that submitted a feature request or issue, taken from the
+// SDK's x-wishkit-sdk-kind header. Web-form and API submissions have none.
+export const platformValues = ["ios", "android"] as const;
+export const platformSchema = z.enum(platformValues);
+export type Platform = z.infer<typeof platformSchema>;
+
+export const platformLabels: Record<Platform, string> = {
+  ios: "iOS",
+  android: "Android",
+};
+
+// A GitHub issue or pull request linked to a feature request or issue.
+export const githubLinkTypeValues = ["issue", "pull"] as const;
+export const githubLinkTypeSchema = z.enum(githubLinkTypeValues);
+export type GitHubLinkType = z.infer<typeof githubLinkTypeSchema>;
+
+export const githubLinkSchema = z.object({
+  id: z.string().uuid(),
+  url: z.string().url(),
+  type: githubLinkTypeSchema,
+  repository: z.string(),
+  number: z.number().int().positive(),
+  title: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+export type GitHubLink = z.infer<typeof githubLinkSchema>;
+
 export const wishResponseSchema = z.object({
   id: z.string().uuid(),
   userUUID: z.string().uuid(),
@@ -49,6 +76,9 @@ export const wishResponseSchema = z.object({
   state: wishStateSchema,
   votingUsers: z.array(userResponseSchema),
   commentList: z.array(commentResponseSchema),
+  // Dashboard/MCP only — SDK responses keep the WishKit shape.
+  platform: platformSchema.nullable().optional(),
+  githubLinks: z.array(githubLinkSchema).optional(),
 });
 export type WishResponse = z.infer<typeof wishResponseSchema>;
 
@@ -372,6 +402,9 @@ export const bugResponseSchema = z.object({
   commentList: z.array(commentResponseSchema),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  // Dashboard/MCP only — SDK responses omit these.
+  platform: platformSchema.nullable().optional(),
+  githubLinks: z.array(githubLinkSchema).optional(),
 });
 export type BugResponse = z.infer<typeof bugResponseSchema>;
 

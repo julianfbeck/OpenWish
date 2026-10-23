@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { BugResponse, BugState } from "@openwish/shared";
 import { bugStateLabels, bugStateValues } from "@openwish/shared";
-import { createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 
 import { BugDetailDialog } from "#/components/bug-detail-dialog";
+import { GitHubLinkCount, PlatformBadge } from "#/components/feedback-meta";
 import { Card, CardContent } from "#/components/ui/card";
 import { DashboardPageHeader } from "#/components/dashboard-shell";
 import {
@@ -32,16 +33,46 @@ const filterLabels: Record<FilterState, string> = {
   ...bugStateLabels,
 };
 
+function newestFirst(left: BugResponse, right: BugResponse) {
+  const byTime = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  return byTime !== 0 ? byTime : right.id.localeCompare(left.id);
+}
+
+// Stays mounted while /dashboard/<slug>/bugs/<id> opens and closes a bug, so
+// each bug has its own shareable URL (used by the notification emails).
 export function DashboardBugsPage() {
   const { slug } = Route.useParams();
+  const { bugId } = useParams({ strict: false });
+  const navigate = useNavigate();
   const { error: sessionError, isLoading } = useDashboardSession();
   const [bugs, setBugs] = useState<BugResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterState>("open");
-  const [selectedBugId, setSelectedBugId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const filterSyncedFor = useRef<string | null>(null);
 
-  const selectedBug = bugs?.find((bug) => bug.id === selectedBugId) ?? null;
+  const selectedBug = bugId ? (bugs?.find((bug) => bug.id === bugId) ?? null) : null;
+  const missingBug = Boolean(bugId && bugs && !selectedBug);
+
+  // A direct link can point at a bug outside the current filter; show its
+  // state's list behind the dialog (once, so later state edits keep the filter).
+  useEffect(() => {
+    if (selectedBug && filterSyncedFor.current !== selectedBug.id) {
+      filterSyncedFor.current = selectedBug.id;
+      setFilter(selectedBug.state);
+    }
+  }, [selectedBug]);
+
+  function openBug(nextBugId: string) {
+    void navigate({
+      to: "/dashboard/$slug/bugs/$bugId",
+      params: { slug, bugId: nextBugId },
+      resetScroll: false,
+    });
+  }
+
+  function closeBug() {
+    void navigate({ to: "/dashboard/$slug/bugs", params: { slug }, resetScroll: false });
+  }
 
   const counts = useMemo(() => {
     const result: Record<FilterState, number> = {
@@ -62,7 +93,7 @@ export function DashboardBugsPage() {
     if (!bugs) {
       return [];
     }
-    return bugs.filter((bug) => bug.state === filter);
+    return bugs.filter((bug) => bug.state === filter).sort(newestFirst);
   }, [bugs, filter]);
 
   useEffect(() => {
@@ -107,6 +138,12 @@ export function DashboardBugsPage() {
         {sessionError || error ? (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
             {error ?? sessionError}
+          </div>
+        ) : null}
+
+        {missingBug ? (
+          <div className="rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-xs text-neutral-300">
+            This bug no longer exists. It may have been deleted.
           </div>
         ) : null}
 
@@ -155,10 +192,8 @@ export function DashboardBugsPage() {
                 key={bug.id}
                 bug={bug}
                 slug={slug}
-                onClick={() => {
-                  setSelectedBugId(bug.id);
-                  setIsDialogOpen(true);
-                }}
+                selected={bugId === bug.id}
+                onClick={() => openBug(bug.id)}
               />
             ))}
           </div>
@@ -166,10 +201,19 @@ export function DashboardBugsPage() {
       </section>
 
       <BugDetailDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        open={Boolean(selectedBug)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeBug();
+          }
+        }}
         bug={selectedBug}
         slug={slug}
+        permalink={
+          selectedBug && typeof window !== "undefined"
+            ? `${window.location.origin}/dashboard/${slug}/bugs/${selectedBug.id}`
+            : undefined
+        }
         onBugSave={async (input) => {
           if (!selectedBug) {
             return;
@@ -221,8 +265,7 @@ export function DashboardBugsPage() {
           try {
             const response = await deleteAdminBug(slug, selectedBug.id);
             setBugs(response.list);
-            setIsDialogOpen(false);
-            setSelectedBugId(null);
+            closeBug();
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not delete bug.",
@@ -231,6 +274,7 @@ export function DashboardBugsPage() {
           }
         }}
       />
+      <Outlet />
     </>
   );
 }
@@ -238,10 +282,12 @@ export function DashboardBugsPage() {
 function BugRow({
   bug,
   slug,
+  selected,
   onClick,
 }: {
   bug: BugResponse;
   slug: string;
+  selected: boolean;
   onClick: () => void;
 }) {
   const thumb = bug.screenshotKeys[0];
@@ -249,7 +295,12 @@ function BugRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-start gap-3 rounded-md border border-white/10 bg-neutral-950 p-3 text-left transition hover:border-white/20 hover:bg-white/[0.03]"
+      className={cn(
+        "flex w-full items-start gap-3 rounded-md border p-3 text-left transition",
+        selected
+          ? "border-white/25 bg-white/5"
+          : "border-white/10 bg-neutral-950 hover:border-white/20 hover:bg-white/[0.03]",
+      )}
     >
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-white/10 bg-black">
         {thumb ? (
@@ -276,6 +327,7 @@ function BugRow({
           )}>
             {bug.kind === "cardData" ? "Card data" : "App bug"}
           </span>
+          <PlatformBadge platform={bug.platform} />
           {bug.screenshotKeys.length > 1 ? (
             <span className="text-[10px] text-neutral-500">
               +{bug.screenshotKeys.length - 1} more
@@ -287,6 +339,7 @@ function BugRow({
           <span>{formatDate(bug.createdAt)}</span>
           <span>•</span>
           <span>{bug.commentList.length} comments</span>
+          <GitHubLinkCount links={bug.githubLinks} />
         </div>
       </div>
     </button>

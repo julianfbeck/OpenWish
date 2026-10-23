@@ -18,9 +18,14 @@ import {
   type IssueCard,
   type IssueContext,
   type IssueNote,
+  type GitHubLink,
+  type GitHubLinkType,
+  type Platform,
 } from "@openwish/shared";
 
 import { isScreenshotKeyForProject } from "./bug-constants";
+import type { ParsedGitHubLink } from "./github-links";
+import { platformFromContext } from "./platform";
 
 import type {
   BugCommentRow,
@@ -70,6 +75,7 @@ const schemaStatements = [
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     state TEXT NOT NULL,
+    platform TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -113,6 +119,7 @@ const schemaStatements = [
     issue_kind TEXT NOT NULL DEFAULT 'bug',
     context_json TEXT NOT NULL DEFAULT '{}',
     card_json TEXT,
+    platform TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -136,6 +143,20 @@ const schemaStatements = [
     created_at TEXT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (issue_id) REFERENCES bugs(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS github_links (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    url TEXT NOT NULL,
+    link_type TEXT NOT NULL,
+    repository TEXT NOT NULL,
+    number INTEGER NOT NULL,
+    title TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE (project_id, target_type, target_id, url),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
   )`,
   `CREATE TABLE IF NOT EXISTS auth_passkeys (
     credential_id TEXT PRIMARY KEY,
@@ -165,6 +186,7 @@ const schemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_bugs_project ON bugs(project_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_bug_comments_project_bug ON bug_comments(project_id, bug_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_issue_notes_project_issue ON issue_notes(project_id, issue_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_github_links_project_target ON github_links(project_id, target_type, target_id, created_at)`,
 ] as const;
 
 const schemaInitPromises = new WeakMap<D1Database, Promise<void>>();
@@ -425,6 +447,7 @@ export async function createWish(
   project: ProjectRow,
   userUuid: string,
   input: CreateWishRequest,
+  platform: Platform | null = null,
 ): Promise<CreateWishResponse> {
   await ensureUserExists(db, project.id, userUuid);
 
@@ -446,6 +469,7 @@ export async function createWish(
       timestamp,
     )
     .run();
+  await recordPlatform(db, "wishes", project.id, id, platform);
 
   return {
     id,
@@ -617,6 +641,7 @@ export async function deleteWish(
       .prepare(`DELETE FROM votes WHERE project_id = ? AND wish_id = ?`)
       .bind(projectId, wishId)
       .run(),
+    deleteGitHubLinksFor(db, projectId, "wish", wishId),
   ]);
 
   await db
@@ -665,7 +690,16 @@ export async function mergeWish(
       .prepare(`DELETE FROM votes WHERE project_id = ? AND wish_id = ?`)
       .bind(projectId, sourceWishId)
       .run(),
+    db
+      .prepare(
+        `UPDATE OR IGNORE github_links SET target_id = ?
+         WHERE project_id = ? AND target_type = 'wish' AND target_id = ?`,
+      )
+      .bind(targetWishId, projectId, sourceWishId)
+      .run(),
   ]);
+  // Links the target already had stay put; drop the source's duplicates.
+  await deleteGitHubLinksFor(db, projectId, "wish", sourceWishId);
 
   await Promise.all([
     db
@@ -784,7 +818,7 @@ export async function loadAdminProject(
       totalWishes: listWishResponse.list.length,
       totalVotes: voteCount?.count ?? 0,
     },
-    list: listWishResponse.list,
+    list: await decorateForAdmin(db, project.id, "wish", listWishResponse.list),
   };
 }
 
@@ -942,6 +976,7 @@ export async function createBug(
   project: ProjectRow,
   userUuid: string,
   input: CreateBugRequest,
+  platform: Platform | null = null,
 ): Promise<CreateBugResponse> {
   await ensureUserExists(db, project.id, userUuid);
 
@@ -971,6 +1006,7 @@ export async function createBug(
       timestamp,
     )
     .run();
+  await recordPlatform(db, "bugs", project.id, id, platform);
 
   return { id, state, createdAt: timestamp };
 }
@@ -980,6 +1016,7 @@ export async function createV2Issue(
   project: ProjectRow,
   userUuid: string,
   input: CreateV2IssueRequest,
+  platform: Platform | null = null,
 ): Promise<CreateBugResponse> {
   await ensureUserExists(db, project.id, userUuid);
   if (input.email) {
@@ -1007,6 +1044,7 @@ export async function createV2Issue(
     timestamp,
     timestamp,
   ).run();
+  await recordPlatform(db, "bugs", project.id, id, platform ?? platformFromContext(input.context ?? {}));
   return { id, state, createdAt: timestamp };
 }
 
@@ -1125,7 +1163,7 @@ export async function loadAdminBugs(
   const bugs = bugsResult.results ?? [];
   const comments = commentsResult.results ?? [];
 
-  return bugs.map((bug) => toBugResponse(bug, comments));
+  return decorateForAdmin(db, project.id, "bug", bugs.map((bug) => toBugResponse(bug, comments)));
 }
 
 export async function loadBug(
@@ -1162,7 +1200,8 @@ export async function loadBug(
     .bind(project.id, bugId)
     .all<BugCommentRow>();
 
-  return toBugResponse(row, commentsResult.results ?? []);
+  const [bug] = await decorateForAdmin(db, project.id, "bug", [toBugResponse(row, commentsResult.results ?? [])]);
+  return bug;
 }
 
 async function bugExists(db: D1Database, projectId: string, bugId: string) {
@@ -1250,6 +1289,7 @@ export async function deleteBug(
     .prepare(`DELETE FROM bug_comments WHERE project_id = ? AND bug_id = ?`)
     .bind(project.id, bugId)
     .run();
+  await deleteGitHubLinksFor(db, project.id, "bug", bugId);
 
   await db
     .prepare(`DELETE FROM bugs WHERE project_id = ? AND id = ?`)
@@ -1297,4 +1337,183 @@ export async function createBugComment(
     .run();
 
   return loadBug(db, project, bugId);
+}
+
+// ── Platform + GitHub links (dashboard/MCP only) ─────────────────────────
+
+type FeedbackTable = "wishes" | "bugs";
+export type GitHubLinkTarget = "wish" | "bug";
+
+// Written separately from the INSERT so SDK submissions keep working on a
+// deployment that has not applied migration 0010 yet.
+async function recordPlatform(
+  db: D1Database,
+  table: FeedbackTable,
+  projectId: string,
+  id: string,
+  platform: Platform | null,
+) {
+  if (!platform) return;
+  try {
+    await db
+      .prepare(`UPDATE ${table} SET platform = ? WHERE project_id = ? AND id = ?`)
+      .bind(platform, projectId, id)
+      .run();
+  } catch (error) {
+    console.warn("[openwish] Could not record platform; apply migration 0010.", error);
+  }
+}
+
+async function loadPlatforms(
+  db: D1Database,
+  table: FeedbackTable,
+  projectId: string,
+): Promise<Map<string, Platform>> {
+  try {
+    const result = await db
+      .prepare(`SELECT id, platform FROM ${table} WHERE project_id = ? AND platform IS NOT NULL`)
+      .bind(projectId)
+      .all<{ id: string; platform: string }>();
+    return new Map(
+      (result.results ?? [])
+        .filter((row): row is { id: string; platform: Platform } => row.platform === "ios" || row.platform === "android")
+        .map((row) => [row.id, row.platform]),
+    );
+  } catch {
+    // Migration 0010 not applied yet — show no platform rather than failing.
+    return new Map();
+  }
+}
+
+type GitHubLinkRow = {
+  id: string;
+  target_type: string;
+  target_id: string;
+  url: string;
+  link_type: string;
+  repository: string;
+  number: number;
+  title: string | null;
+  created_at: string;
+};
+
+function linkKey(targetType: GitHubLinkTarget, targetId: string) {
+  return `${targetType}:${targetId}`;
+}
+
+export async function loadGitHubLinks(
+  db: D1Database,
+  projectId: string,
+): Promise<Map<string, GitHubLink[]>> {
+  const result = await db
+    .prepare(
+      `SELECT id, target_type, target_id, url, link_type, repository, number, title, created_at
+       FROM github_links
+       WHERE project_id = ?
+       ORDER BY datetime(created_at) ASC`,
+    )
+    .bind(projectId)
+    .all<GitHubLinkRow>();
+  const links = new Map<string, GitHubLink[]>();
+  for (const row of result.results ?? []) {
+    const key = linkKey(row.target_type as GitHubLinkTarget, row.target_id);
+    const list = links.get(key) ?? [];
+    list.push({
+      id: row.id,
+      url: row.url,
+      type: row.link_type as GitHubLinkType,
+      repository: row.repository,
+      number: Number(row.number),
+      title: row.title ?? null,
+      createdAt: row.created_at,
+    });
+    links.set(key, list);
+  }
+  return links;
+}
+
+export async function loadGitHubLinksFor(
+  db: D1Database,
+  projectId: string,
+  targetType: GitHubLinkTarget,
+  targetId: string,
+): Promise<GitHubLink[]> {
+  return (await loadGitHubLinks(db, projectId)).get(linkKey(targetType, targetId)) ?? [];
+}
+
+async function decorateForAdmin<Item extends { id: string }>(
+  db: D1Database,
+  projectId: string,
+  targetType: GitHubLinkTarget,
+  items: Item[],
+): Promise<Array<Item & { platform: Platform | null; githubLinks: GitHubLink[] }>> {
+  const [platforms, links] = await Promise.all([
+    loadPlatforms(db, targetType === "wish" ? "wishes" : "bugs", projectId),
+    loadGitHubLinks(db, projectId),
+  ]);
+  return items.map((item) => ({
+    ...item,
+    platform: platforms.get(item.id) ?? null,
+    githubLinks: links.get(linkKey(targetType, item.id)) ?? [],
+  }));
+}
+
+// Linking the same issue or pull request again keeps one row and only updates
+// its title when a new one is given.
+export async function addGitHubLink(
+  db: D1Database,
+  projectId: string,
+  targetType: GitHubLinkTarget,
+  targetId: string,
+  link: ParsedGitHubLink,
+  title: string | null,
+) {
+  await db
+    .prepare(
+      `INSERT INTO github_links (id, project_id, target_type, target_id, url, link_type, repository, number, title, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(project_id, target_type, target_id, url) DO UPDATE SET
+         title = COALESCE(excluded.title, github_links.title)`,
+    )
+    .bind(
+      crypto.randomUUID(),
+      projectId,
+      targetType,
+      targetId,
+      link.url,
+      link.type,
+      link.repository,
+      link.number,
+      title,
+      nowIso(),
+    )
+    .run();
+}
+
+export async function removeGitHubLink(
+  db: D1Database,
+  projectId: string,
+  targetType: GitHubLinkTarget,
+  targetId: string,
+  url: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `DELETE FROM github_links WHERE project_id = ? AND target_type = ? AND target_id = ? AND url = ?`,
+    )
+    .bind(projectId, targetType, targetId, url)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
+async function deleteGitHubLinksFor(
+  db: D1Database,
+  projectId: string,
+  targetType: GitHubLinkTarget,
+  targetId: string,
+) {
+  await db
+    .prepare(`DELETE FROM github_links WHERE project_id = ? AND target_type = ? AND target_id = ?`)
+    .bind(projectId, targetType, targetId)
+    .run();
 }

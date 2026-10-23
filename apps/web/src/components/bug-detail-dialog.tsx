@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
+import { CopyLinkButton, GitHubLinkList, PlatformBadge } from "#/components/feedback-meta";
 import { Dialog, DialogContent, DialogTitle } from "#/components/ui/dialog";
 import { Input } from "#/components/ui/input";
 import {
@@ -38,6 +39,7 @@ type BugDetailDialogProps = {
   onOpenChange: (open: boolean) => void;
   bug: BugResponse | null;
   slug: string;
+  permalink?: string;
   onBugSave: (input: { title: string; description: string }) => Promise<void> | void;
   onStateChange: (state: BugState) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
   onCommentCreate: (description: string) => Promise<ReporterNotificationStatus | undefined> | ReporterNotificationStatus | undefined;
@@ -49,6 +51,7 @@ export function BugDetailDialog({
   onOpenChange,
   bug,
   slug,
+  permalink,
   onBugSave,
   onStateChange,
   onCommentCreate,
@@ -132,7 +135,10 @@ export function BugDetailDialog({
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-medium text-white">Reported by</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-white">Reported by</p>
+                <PlatformBadge platform={bug.platform} />
+              </div>
               {bug.reporterEmail ? (
                 <p className="break-all text-xs text-neutral-200">
                   <a
@@ -285,6 +291,7 @@ export function BugDetailDialog({
 
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-l border-white/10 p-5">
             <ReporterNotificationNotice status={reporterNotification} error={actionError} />
+            {permalink ? <CopyLinkButton url={permalink} /> : null}
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-neutral-300">Status</span>
               <Select
@@ -319,6 +326,8 @@ export function BugDetailDialog({
             {isUpdatingState ? (
               <p className="-mt-2 text-right text-[11px] text-neutral-500">Updating…</p>
             ) : null}
+
+            <GitHubLinkList links={bug.githubLinks} />
 
             <div className="space-y-2">
               <p className="text-[11px] uppercase tracking-wider text-neutral-500">

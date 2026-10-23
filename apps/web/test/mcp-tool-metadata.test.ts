@@ -38,6 +38,7 @@ const writeTools = [
   "openwish_create_project", "openwish_update_project_settings", "openwish_create_feature",
   "openwish_update_feature", "openwish_reply_to_feature", "openwish_create_issue",
   "openwish_update_issue", "openwish_reply_to_issue", "openwish_add_issue_note", "openwish_send_test_email",
+  "openwish_link_github", "openwish_unlink_github",
 ];
 
 function environment(): Bindings {
@@ -88,7 +89,7 @@ describe("MCP tool authentication metadata over HTTP", () => {
   it.each([false, true])("publishes both auth declarations and the complete permitted tool surface (OAuth=%s)", async (oauth) => {
     const tools = await listTools(oauth);
     const names = [...readTools, ...adminTools, ...writeTools].filter((name) => !oauth || name !== "openwish_create_project");
-    expect(tools).toHaveLength(oauth ? 19 : 20);
+    expect(tools).toHaveLength(oauth ? 21 : 22);
     expect(tools.map((tool) => tool.name).sort()).toEqual(names.sort());
     for (const tool of tools) {
       expect(tool.title).toBeTruthy();

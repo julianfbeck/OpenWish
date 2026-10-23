@@ -6,6 +6,7 @@ import { isScreenshotKeyForProject } from "#/server/bug-constants";
 import { createV2Issue, loadUserIssuesV2 } from "#/server/db";
 import { parseJson, sdkError } from "#/server/http";
 import { sendBugNotification } from "#/server/notifications";
+import { platformFromContext, platformFromRequest } from "#/server/platform";
 import { enforceSdkRateLimit } from "#/server/rate-limit";
 import { requireRequestContext } from "#/server/route-context";
 
@@ -53,11 +54,13 @@ export const Route = createFileRoute("/api/v2/issues")({
             return sdkError("couldNotCreateRequest", 400);
           }
         }
+        const platform = platformFromRequest(request) ?? platformFromContext(body.data.context ?? {});
         const created = await createV2Issue(
           requestContext.env.DB,
           projectResult.project,
           userResult.uuid,
           body.data,
+          platform,
         );
         if (projectResult.project.notification_email) {
           const notify = sendBugNotification(requestContext.env, projectResult.project, {
@@ -67,6 +70,7 @@ export const Route = createFileRoute("/api/v2/issues")({
             userUUID: userResult.uuid,
             reporterEmail: body.data.email ?? null,
             screenshotKeys: body.data.screenshotKeys,
+            platform,
           }).catch(() => undefined);
           requestContext.executionContext?.waitUntil(notify);
         }

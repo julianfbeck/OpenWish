@@ -24,6 +24,7 @@ type MockUserRow = {
 
 type MockWishRow = WishRow & {
   project_id: string;
+  platform?: string | null;
 };
 
 type MockCommentRow = CommentRow & {
@@ -37,6 +38,20 @@ type MockVoteRow = VoteRow & {
 
 type MockBugRow = BugRow & {
   project_id: string;
+  platform?: string | null;
+};
+
+type MockGitHubLinkRow = {
+  id: string;
+  project_id: string;
+  target_type: string;
+  target_id: string;
+  url: string;
+  link_type: string;
+  repository: string;
+  number: number;
+  title: string | null;
+  created_at: string;
 };
 
 type MockBugCommentRow = BugCommentRow & {
@@ -52,6 +67,7 @@ type MockState = {
   bugs: MockBugRow[];
   bugComments: MockBugCommentRow[];
   issueNotes: Array<{ id: string; project_id: string; issue_id: string; body: string; created_at: string }>;
+  githubLinks: MockGitHubLinkRow[];
   passkeys: PasskeyRow[];
   authChallenges: AuthChallengeRow[];
   analyticsEvents: Array<{
@@ -113,6 +129,7 @@ export class MockD1Database {
       bugs: initialState?.bugs ?? [],
       bugComments: initialState?.bugComments ?? [],
       issueNotes: initialState?.issueNotes ?? [],
+      githubLinks: initialState?.githubLinks ?? [],
       passkeys: initialState?.passkeys ?? [],
       authChallenges: initialState?.authChallenges ?? [],
       analyticsEvents: initialState?.analyticsEvents ?? [],
@@ -533,6 +550,29 @@ export class MockD1Database {
       return { results: results as Row[] };
     }
 
+    for (const [table, rows] of [["wishes", this.state.wishes], ["bugs", this.state.bugs]] as const) {
+      if (normalized.includes(`SELECT id, platform FROM ${table} WHERE project_id = ? AND platform IS NOT NULL`)) {
+        const projectId = String(bindings[0] ?? "");
+        const results = (rows as Array<{ id: string; project_id: string; platform?: string | null }>)
+          .filter((entry) => entry.project_id === projectId && entry.platform != null)
+          .map(({ id, platform }) => ({ id, platform }));
+        return { results: results as Row[] };
+      }
+    }
+
+    if (
+      normalized.includes(
+        "SELECT id, target_type, target_id, url, link_type, repository, number, title, created_at FROM github_links WHERE project_id = ? ORDER BY datetime(created_at) ASC",
+      )
+    ) {
+      const projectId = String(bindings[0] ?? "");
+      const results = this.state.githubLinks
+        .filter((entry) => entry.project_id === projectId)
+        .sort((left, right) => -descDate(left.created_at, right.created_at))
+        .map(({ project_id: _projectId, ...rest }) => rest);
+      return { results: results as Row[] };
+    }
+
     if (normalized.includes("SELECT id, body, created_at FROM issue_notes WHERE project_id = ? AND issue_id = ?")) {
       const projectId = String(bindings[0] ?? "");
       const issueId = String(bindings[1] ?? "");
@@ -550,6 +590,94 @@ export class MockD1Database {
     const normalized = normalizeSql(sql);
 
     if (normalized.startsWith("CREATE TABLE IF NOT EXISTS") || normalized.startsWith("CREATE INDEX IF NOT EXISTS")) {
+      return { success: true };
+    }
+
+    for (const [table, rows] of [["wishes", this.state.wishes], ["bugs", this.state.bugs]] as const) {
+      if (normalized.includes(`UPDATE ${table} SET platform = ? WHERE project_id = ? AND id = ?`)) {
+        const [platform, projectId, id] = bindings;
+        const row = (rows as Array<{ id: string; project_id: string; platform?: string | null }>).find(
+          (entry) => entry.project_id === projectId && entry.id === id,
+        );
+        if (row) {
+          row.platform = platform == null ? null : String(platform);
+        }
+        return { success: true, meta: { changes: row ? 1 : 0 } };
+      }
+    }
+
+    if (
+      normalized.includes(
+        "INSERT INTO github_links (id, project_id, target_type, target_id, url, link_type, repository, number, title, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(project_id, target_type, target_id, url) DO UPDATE SET title = COALESCE(excluded.title, github_links.title)",
+      )
+    ) {
+      const [id, projectId, targetType, targetId, url, linkType, repository, number, title, createdAt] = bindings;
+      const existing = this.state.githubLinks.find(
+        (entry) =>
+          entry.project_id === projectId &&
+          entry.target_type === targetType &&
+          entry.target_id === targetId &&
+          entry.url === url,
+      );
+      if (existing) {
+        existing.title = title == null ? existing.title : String(title);
+      } else {
+        this.state.githubLinks.push({
+          id: String(id),
+          project_id: String(projectId),
+          target_type: String(targetType),
+          target_id: String(targetId),
+          url: String(url),
+          link_type: String(linkType),
+          repository: String(repository),
+          number: Number(number),
+          title: title == null ? null : String(title),
+          created_at: String(createdAt),
+        });
+      }
+      return { success: true, meta: { changes: 1 } };
+    }
+
+    if (
+      normalized.includes(
+        "DELETE FROM github_links WHERE project_id = ? AND target_type = ? AND target_id = ?",
+      )
+    ) {
+      const [projectId, targetType, targetId, url] = bindings;
+      const before = this.state.githubLinks.length;
+      this.state.githubLinks = this.state.githubLinks.filter(
+        (entry) =>
+          !(
+            entry.project_id === projectId &&
+            entry.target_type === targetType &&
+            entry.target_id === targetId &&
+            (!normalized.includes("AND url = ?") || entry.url === url)
+          ),
+      );
+      return { success: true, meta: { changes: before - this.state.githubLinks.length } };
+    }
+
+    if (
+      normalized.includes(
+        "UPDATE OR IGNORE github_links SET target_id = ? WHERE project_id = ? AND target_type = 'wish' AND target_id = ?",
+      )
+    ) {
+      const [targetId, projectId, sourceId] = bindings;
+      for (const entry of this.state.githubLinks) {
+        if (entry.project_id !== projectId || entry.target_type !== "wish" || entry.target_id !== sourceId) {
+          continue;
+        }
+        const duplicate = this.state.githubLinks.some(
+          (other) =>
+            other.project_id === projectId &&
+            other.target_type === "wish" &&
+            other.target_id === targetId &&
+            other.url === entry.url,
+        );
+        if (!duplicate) {
+          entry.target_id = String(targetId);
+        }
+      }
       return { success: true };
     }
 
@@ -1088,6 +1216,9 @@ export class MockD1Database {
         (entry) => entry.project_id !== project.id,
       );
       this.state.analyticsEvents = this.state.analyticsEvents.filter(
+        (entry) => entry.project_id !== project.id,
+      );
+      this.state.githubLinks = this.state.githubLinks.filter(
         (entry) => entry.project_id !== project.id,
       );
       return { success: true };

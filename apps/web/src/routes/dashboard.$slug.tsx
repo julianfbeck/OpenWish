@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { AdminProjectResponse, WishState } from "@openwish/shared";
 import { wishStateLabels } from "@openwish/shared";
-import { Outlet, createFileRoute, Link, useRouterState } from "@tanstack/react-router";
+import {
+  Outlet,
+  createFileRoute,
+  Link,
+  useNavigate,
+  useParams,
+  useRouterState,
+} from "@tanstack/react-router";
 import { Download, Layers3, List } from "lucide-react";
 
 import { Button } from "#/components/ui/button";
@@ -12,6 +19,7 @@ import {
   DashboardPageHeader,
   type DashboardTab,
 } from "#/components/dashboard-shell";
+import { GitHubLinkCount, PlatformBadge } from "#/components/feedback-meta";
 import { RequestDetailDialog } from "#/components/request-detail-dialog";
 import {
   ApiRequestError,
@@ -67,13 +75,10 @@ export function DashboardSlugRouteLayout() {
   });
   const { projects, sessionUsername } = useDashboardSession();
 
-  const active: DashboardTab = pathname.endsWith("/bugs")
-    ? "bugs"
-    : pathname.endsWith("/analytics")
-      ? "analytics"
-      : pathname.endsWith("/settings")
-        ? "settings"
-        : "board";
+  // /dashboard/<slug>/<section>/… — feature detail pages belong to the board.
+  const section = pathname.split("/")[3] ?? "";
+  const active: DashboardTab =
+    section === "bugs" || section === "analytics" || section === "settings" ? section : "board";
   const projectName = projects.find((project) => project.slug === slug)?.name;
 
   // Remember the project once the session confirms it exists, so the projects
@@ -159,23 +164,44 @@ function WishCard({
           ) : null}
         </div>
         <p className="line-clamp-2 text-xs leading-5 text-neutral-400">{wish.description}</p>
+        {wish.platform || wish.githubLinks?.length ? (
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <PlatformBadge platform={wish.platform} />
+            <GitHubLinkCount links={wish.githubLinks} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
+// The board stays mounted while /dashboard/<slug>/features/<id> opens and closes
+// a request, so each request has its own shareable URL (used by the emails).
 export function DashboardBoardPage() {
   const { slug } = Route.useParams();
+  const { featureId } = useParams({ strict: false });
+  const navigate = useNavigate();
   const { error: sessionError, isLoading } = useDashboardSession();
   const [data, setData] = useState<AdminProjectResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("board");
-  const [selectedWishId, setSelectedWishId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [draggingWishId, setDraggingWishId] = useState<string | null>(null);
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
 
-  const selectedWish = data?.list.find((wish) => wish.id === selectedWishId) ?? null;
+  const selectedWish = featureId ? (data?.list.find((wish) => wish.id === featureId) ?? null) : null;
+  const missingFeature = Boolean(featureId && data && !selectedWish);
+
+  function openWish(wishId: string) {
+    void navigate({
+      to: "/dashboard/$slug/features/$featureId",
+      params: { slug, featureId: wishId },
+      resetScroll: false,
+    });
+  }
+
+  function closeWish() {
+    void navigate({ to: "/dashboard/$slug", params: { slug }, resetScroll: false });
+  }
 
   const groupedColumns = useMemo(
     () =>
@@ -205,11 +231,6 @@ export function DashboardBoardPage() {
         }
 
         setData(response);
-        setSelectedWishId((current) =>
-          current && response.list.some((wish) => wish.id === current)
-            ? current
-            : (response.list[0]?.id ?? null),
-        );
       } catch (nextError) {
         if (cancelled) {
           return;
@@ -335,6 +356,12 @@ export function DashboardBoardPage() {
           </div>
         ) : null}
 
+        {missingFeature ? (
+          <div className="rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-xs text-neutral-300">
+            This feature request no longer exists. It may have been merged or deleted.
+          </div>
+        ) : null}
+
         {!data ? (
           <Card className="border-dashed border-white/10 bg-transparent">
             <CardContent className="grid min-h-32 place-items-center p-6 text-xs text-neutral-500">
@@ -427,7 +454,7 @@ export function DashboardBoardPage() {
                               <WishCard
                                 key={wish.id}
                                 wish={wish}
-                                selected={selectedWishId === wish.id}
+                                selected={featureId === wish.id}
                                 isDragging={draggingWishId === wish.id}
                                 onDragStart={(event) => {
                                   event.dataTransfer.effectAllowed = "move";
@@ -438,10 +465,7 @@ export function DashboardBoardPage() {
                                   setDraggingWishId(null);
                                   setDropTargetKey(null);
                                 }}
-                                onClick={() => {
-                                  setSelectedWishId(wish.id);
-                                  setIsDialogOpen(true);
-                                }}
+                                onClick={() => openWish(wish.id)}
                               />
                             ))
                           )}
@@ -470,12 +494,9 @@ export function DashboardBoardPage() {
                           <WishCard
                             key={wish.id}
                             wish={wish}
-                            selected={selectedWishId === wish.id}
+                            selected={featureId === wish.id}
                             showState
-                            onClick={() => {
-                              setSelectedWishId(wish.id);
-                              setIsDialogOpen(true);
-                            }}
+                            onClick={() => openWish(wish.id)}
                           />
                         ))}
                       </div>
@@ -493,11 +514,20 @@ export function DashboardBoardPage() {
       </section>
 
       <RequestDetailDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        open={Boolean(selectedWish)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeWish();
+          }
+        }}
         wish={selectedWish}
         allWishes={data?.list ?? []}
         projectCreatedAt={data?.project.createdAt}
+        permalink={
+          selectedWish && typeof window !== "undefined"
+            ? `${window.location.origin}/dashboard/${slug}/features/${selectedWish.id}`
+            : undefined
+        }
         onStateChange={async (state) => {
           if (!selectedWish) {
             return;
@@ -553,7 +583,7 @@ export function DashboardBoardPage() {
           try {
             const response = await mergeAdminWish(slug, selectedWish.id, targetWishId);
             setData(response);
-            setSelectedWishId(targetWishId);
+            openWish(targetWishId);
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not merge request.",
@@ -569,8 +599,7 @@ export function DashboardBoardPage() {
           try {
             const response = await deleteAdminWish(slug, selectedWish.id);
             setData(response);
-            setSelectedWishId(response.list[0]?.id ?? null);
-            setIsDialogOpen(false);
+            closeWish();
           } catch (nextError) {
             setError(
               nextError instanceof Error ? nextError.message : "Could not delete request.",
@@ -579,6 +608,7 @@ export function DashboardBoardPage() {
           }
         }}
       />
+      <Outlet />
     </>
   );
 }
