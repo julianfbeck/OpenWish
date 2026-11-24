@@ -142,6 +142,8 @@ pnpm run deploy
 | `OPENWISH_PASSKEY_RP_NAME` | optional | Shown in the OS passkey prompt. |
 | `OPENWISH_TURNSTILE_SITE_KEY` | required for the public form | Public site key from `dash.cloudflare.com → Turnstile → Add site`. Embedded in the `/feedback/<slug>` page. |
 | `CLOUDFLARE_ACCOUNT_ID` | required for reporter emails | Your Cloudflare account id. Paired with the `CLOUDFLARE_EMAIL_API_TOKEN` secret to send reporter notifications via Cloudflare Email Service. |
+| `OPENWISH_AI_TRIAGE` | optional | AI triage of new issues runs when the Workers AI binding `AI` exists (`"ai": { "binding": "AI" }`). Set to `off` to switch it off without removing the binding. |
+| `OPENWISH_AI_TRIAGE_MODEL` | optional | Workers AI text model for triage. Default `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. |
 
 ### Secrets
 
@@ -154,6 +156,28 @@ pnpm run deploy
 | `OPENWISH_TURNSTILE_SECRET_KEY` | required for the public form | Server-side secret paired with the site key above. Used on `siteverify` calls. Set with `wrangler secret put OPENWISH_TURNSTILE_SECRET_KEY`. |
 | `CLOUDFLARE_EMAIL_API_TOKEN` | required for reporter emails | API token with the `email_sending:write` scope (create at `dash.cloudflare.com/profile/api-tokens`). Set with `wrangler secret put CLOUDFLARE_EMAIL_API_TOKEN`. |
 | `OPENWISH_GLOBAL_API_KEY` | required for the v1/CLI API and global-key MCP access | A single secret authorizing all projects through `/api/v1/**` and `/mcp`. Generate with `openssl rand -base64 32`; set with `wrangler secret put OPENWISH_GLOBAL_API_KEY`. Authenticated dashboard users can reveal/copy it under Projects → Agent access (MCP). OAuth grants use their own tokens and project permissions. |
+
+---
+
+## AI triage (private notes)
+
+With the Workers AI binding `AI` configured, every new issue (SDK V1/V2 and
+the public form) gets one private note after the SDK response has been sent:
+
+- an English translation of the title and description when the report is in
+  another language,
+- a one-sentence English summary,
+- likely duplicates among the project's existing issues (lexical
+  pre-selection, then the model confirms; ids are 8-character prefixes).
+
+The note starts with `[AI triage]`. It shows under **Private notes** in the
+dashboard's issue dialog and through the MCP tool `openwish_list_issue_notes`.
+It is never emailed and never shown to the reporter, and AI triage never
+replies, changes state or edits the issue. The report text goes to Workers AI
+in your own Cloudflare account; no external API key is involved. Failures are
+logged without report content and do not affect the submission.
+
+Switch it off with `OPENWISH_AI_TRIAGE=off` (or remove the binding).
 
 ---
 

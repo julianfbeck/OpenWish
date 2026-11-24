@@ -62,6 +62,7 @@ import { Route as DashboardSlugBoardFeaturesFeatureIdRouteImport } from './route
 import { Route as ApiAdminProjectsSlugBugsBugIdRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId'
 import { Route as ApiAdminProjectsSlugWishesWishIdRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId'
 import { Route as ApiAdminProjectsSlugBugsBugIdCommentsRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId/comments'
+import { Route as ApiAdminProjectsSlugBugsBugIdNotesRouteImport } from './routes/api/admin/projects/$slug/bugs/$bugId/notes'
 import { Route as ApiAdminProjectsSlugWishesWishIdCommentsRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId/comments'
 import { Route as ApiAdminProjectsSlugWishesWishIdMergeRouteImport } from './routes/api/admin/projects/$slug/wishes/$wishId/merge'
 import { Route as ApiV2ProjectsSlugIssuesIssueIdNotesRouteImport } from './routes/api/v2/projects/$slug/issues/$issueId/notes'
@@ -345,6 +346,12 @@ const ApiAdminProjectsSlugBugsBugIdCommentsRoute =
     path: '/comments',
     getParentRoute: () => ApiAdminProjectsSlugBugsBugIdRoute,
   } as any)
+const ApiAdminProjectsSlugBugsBugIdNotesRoute =
+  ApiAdminProjectsSlugBugsBugIdNotesRouteImport.update({
+    id: '/notes',
+    path: '/notes',
+    getParentRoute: () => ApiAdminProjectsSlugBugsBugIdRoute,
+  } as any)
 const ApiAdminProjectsSlugWishesWishIdCommentsRoute =
   ApiAdminProjectsSlugWishesWishIdCommentsRouteImport.update({
     id: '/comments',
@@ -423,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
+  '/api/admin/projects/$slug/bugs/$bugId/notes': typeof ApiAdminProjectsSlugBugsBugIdNotesRoute
   '/api/admin/projects/$slug/wishes/$wishId/comments': typeof ApiAdminProjectsSlugWishesWishIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/merge': typeof ApiAdminProjectsSlugWishesWishIdMergeRoute
   '/api/v2/projects/$slug/issues/$issueId/notes': typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
@@ -480,6 +488,7 @@ export interface FileRoutesByTo {
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
+  '/api/admin/projects/$slug/bugs/$bugId/notes': typeof ApiAdminProjectsSlugBugsBugIdNotesRoute
   '/api/admin/projects/$slug/wishes/$wishId/comments': typeof ApiAdminProjectsSlugWishesWishIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/merge': typeof ApiAdminProjectsSlugWishesWishIdMergeRoute
   '/api/v2/projects/$slug/issues/$issueId/notes': typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
@@ -540,6 +549,7 @@ export interface FileRoutesById {
   '/api/admin/projects/$slug/bugs/$bugId': typeof ApiAdminProjectsSlugBugsBugIdRouteWithChildren
   '/api/admin/projects/$slug/wishes/$wishId': typeof ApiAdminProjectsSlugWishesWishIdRouteWithChildren
   '/api/admin/projects/$slug/bugs/$bugId/comments': typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
+  '/api/admin/projects/$slug/bugs/$bugId/notes': typeof ApiAdminProjectsSlugBugsBugIdNotesRoute
   '/api/admin/projects/$slug/wishes/$wishId/comments': typeof ApiAdminProjectsSlugWishesWishIdCommentsRoute
   '/api/admin/projects/$slug/wishes/$wishId/merge': typeof ApiAdminProjectsSlugWishesWishIdMergeRoute
   '/api/v2/projects/$slug/issues/$issueId/notes': typeof ApiV2ProjectsSlugIssuesIssueIdNotesRoute
@@ -600,6 +610,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
+    | '/api/admin/projects/$slug/bugs/$bugId/notes'
     | '/api/admin/projects/$slug/wishes/$wishId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/merge'
     | '/api/v2/projects/$slug/issues/$issueId/notes'
@@ -657,6 +668,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
+    | '/api/admin/projects/$slug/bugs/$bugId/notes'
     | '/api/admin/projects/$slug/wishes/$wishId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/merge'
     | '/api/v2/projects/$slug/issues/$issueId/notes'
@@ -716,6 +728,7 @@ export interface FileRouteTypes {
     | '/api/admin/projects/$slug/bugs/$bugId'
     | '/api/admin/projects/$slug/wishes/$wishId'
     | '/api/admin/projects/$slug/bugs/$bugId/comments'
+    | '/api/admin/projects/$slug/bugs/$bugId/notes'
     | '/api/admin/projects/$slug/wishes/$wishId/comments'
     | '/api/admin/projects/$slug/wishes/$wishId/merge'
     | '/api/v2/projects/$slug/issues/$issueId/notes'
@@ -1132,6 +1145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminProjectsSlugBugsBugIdCommentsRouteImport
       parentRoute: typeof ApiAdminProjectsSlugBugsBugIdRoute
     }
+    '/api/admin/projects/$slug/bugs/$bugId/notes': {
+      id: '/api/admin/projects/$slug/bugs/$bugId/notes'
+      path: '/notes'
+      fullPath: '/api/admin/projects/$slug/bugs/$bugId/notes'
+      preLoaderRoute: typeof ApiAdminProjectsSlugBugsBugIdNotesRouteImport
+      parentRoute: typeof ApiAdminProjectsSlugBugsBugIdRoute
+    }
     '/api/admin/projects/$slug/wishes/$wishId/comments': {
       id: '/api/admin/projects/$slug/wishes/$wishId/comments'
       path: '/comments'
@@ -1222,6 +1242,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 interface ApiAdminProjectsSlugBugsBugIdRouteChildren {
   ApiAdminProjectsSlugBugsBugIdCommentsRoute: typeof ApiAdminProjectsSlugBugsBugIdCommentsRoute
+  ApiAdminProjectsSlugBugsBugIdNotesRoute: typeof ApiAdminProjectsSlugBugsBugIdNotesRoute
   ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute: typeof ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute
 }
 
@@ -1229,6 +1250,8 @@ const ApiAdminProjectsSlugBugsBugIdRouteChildren: ApiAdminProjectsSlugBugsBugIdR
   {
     ApiAdminProjectsSlugBugsBugIdCommentsRoute:
       ApiAdminProjectsSlugBugsBugIdCommentsRoute,
+    ApiAdminProjectsSlugBugsBugIdNotesRoute:
+      ApiAdminProjectsSlugBugsBugIdNotesRoute,
     ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute:
       ApiAdminProjectsSlugBugsBugIdScreenshotsKeyRoute,
   }

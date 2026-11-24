@@ -1,6 +1,7 @@
 import { createV2IssueRequestSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { scheduleIssueTriage } from "#/server/ai-triage";
 import { requireProjectFromApiKey, requireUserUuid } from "#/server/auth";
 import { isScreenshotKeyForProject } from "#/server/bug-constants";
 import { createV2Issue, loadUserIssuesV2 } from "#/server/db";
@@ -74,6 +75,13 @@ export const Route = createFileRoute("/api/v2/issues")({
           }).catch(() => undefined);
           requestContext.executionContext?.waitUntil(notify);
         }
+        scheduleIssueTriage(requestContext.env, requestContext.executionContext, projectResult.project, {
+          id: created.id,
+          title: body.data.title,
+          description: body.data.description,
+          kind: body.data.kind,
+          card: body.data.card ?? null,
+        });
         return Response.json(created, { status: 201 });
       },
     },

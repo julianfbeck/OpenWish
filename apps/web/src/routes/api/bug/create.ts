@@ -1,6 +1,7 @@
 import { createBugRequestSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { scheduleIssueTriage } from "#/server/ai-triage";
 import { requireProjectFromApiKey, requireUserUuid } from "#/server/auth";
 import { isScreenshotKeyForProject } from "#/server/bug-constants";
 import { createBug } from "#/server/db";
@@ -86,6 +87,12 @@ export const Route = createFileRoute("/api/bug/create")({
             requestContext.executionContext.waitUntil(notify);
           }
         }
+
+        scheduleIssueTriage(requestContext.env, requestContext.executionContext, projectResult.project, {
+          id: response.id,
+          title: bodyResult.data.title,
+          description: bodyResult.data.description,
+        });
 
         return Response.json(response);
       },

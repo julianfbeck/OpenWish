@@ -5,6 +5,7 @@ import type {
   BugState,
   DashboardLoginResponse,
   DashboardSessionResponse,
+  IssueNoteListResponse,
   PasskeyAvailabilityResponse,
   PasskeyListResponse,
   PasskeySummary,
@@ -238,6 +239,10 @@ export async function createAdminBugComment(
       body: JSON.stringify({ description }),
     },
   );
+}
+
+export async function fetchAdminBugNotes(slug: string, bugId: string) {
+  return request<IssueNoteListResponse>(`/api/admin/projects/${slug}/bugs/${bugId}/notes`);
 }
 
 export function bugScreenshotUrl(slug: string, bugId: string, key: string) {

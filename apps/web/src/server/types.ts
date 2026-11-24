@@ -28,6 +28,12 @@ export type Bindings = {
   OPENWISH_PASSKEY_RP_NAME?: string;
   OPENWISH_TURNSTILE_SITE_KEY?: string;
   OPENWISH_TURNSTILE_SECRET_KEY?: string;
+  // Optional AI triage of new issues (Workers AI binding, no external key).
+  // Writes private notes only. Set OPENWISH_AI_TRIAGE=off to disable it while
+  // keeping the binding; OPENWISH_AI_TRIAGE_MODEL overrides the model.
+  AI?: Ai;
+  OPENWISH_AI_TRIAGE?: string;
+  OPENWISH_AI_TRIAGE_MODEL?: string;
 };
 
 export type PasskeyRow = {

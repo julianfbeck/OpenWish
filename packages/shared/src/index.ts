@@ -474,6 +474,7 @@ export type CreateIssueNoteRequest = z.infer<typeof createIssueNoteRequestSchema
 export const issueNoteListResponseSchema = z.object({
   list: z.array(issueNoteSchema),
 });
+export type IssueNoteListResponse = z.infer<typeof issueNoteListResponseSchema>;
 
 export const passkeySummarySchema = z.object({
   credentialId: z.string(),
