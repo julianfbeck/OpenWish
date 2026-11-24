@@ -56,7 +56,8 @@ every request any released SDK sends and keep every response shape they decode.
    Know which commit is live and which migrations are applied.
 2. **Tests** (CI runs the same on every PR, `.github/workflows/ci.yml`):
    ```bash
-   swift test
+   swift test   # Swift 6.2+ toolchain; older SwiftPM drops the string catalog's
+                # translations, use: xcodebuild test -scheme openwish -destination 'platform=macOS'
    pnpm install --frozen-lockfile && pnpm typecheck && pnpm test
    (cd apps/cli && go build ./...) && (cd apps/mcp && go build ./...)
    python3 scripts/generate-localizations.py --check

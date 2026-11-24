@@ -19,8 +19,12 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: swift test
-        run: swift test
+      # Xcode's build system compiles Localizable.xcstrings into .lproj
+      # bundles the way apps get them. The runner's command-line SwiftPM
+      # (before the Swift Build backend) ships only English, which the
+      # localization tests catch.
+      - name: Tests (macOS, Xcode build system)
+        run: xcodebuild test -scheme openwish -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
       # swift test builds for macOS only; the bug-report screens are iOS-only.
       - name: Build for iOS
         run: xcodebuild -scheme openwish -destination 'generic/platform=iOS' -skipPackagePluginValidation build CODE_SIGNING_ALLOWED=NO
