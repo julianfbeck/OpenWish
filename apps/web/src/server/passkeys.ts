@@ -9,7 +9,7 @@ import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
-} from "@simplewebauthn/types";
+} from "@simplewebauthn/server";
 
 import type { AuthChallengeRow, Bindings, PasskeyRow } from "./types";
 
@@ -43,7 +43,7 @@ function toPasskeySummary(row: PasskeyRow): PasskeySummary {
   };
 }
 
-function base64UrlToUint8Array(value: string): Uint8Array {
+function base64UrlToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   const padded = value
     .replaceAll("-", "+")
     .replaceAll("_", "/")

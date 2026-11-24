@@ -21,7 +21,7 @@ import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
-} from "@simplewebauthn/types";
+} from "@simplewebauthn/browser";
 
 const apiBaseUrl =
   (import.meta.env.BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
