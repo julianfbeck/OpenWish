@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { BugResponse, BugState, ReporterNotificationStatus } from "@openwish/shared";
+import type { BugResponse, BugState, IssueNote, ReporterNotificationStatus } from "@openwish/shared";
 import { bugStateLabels } from "@openwish/shared";
 
 import {
@@ -27,7 +27,7 @@ import {
 } from "#/components/ui/select";
 import { Textarea } from "#/components/ui/textarea";
 import { ReporterNotificationNotice } from "#/components/reporter-notification-notice";
-import { bugScreenshotUrl } from "#/lib/api";
+import { bugScreenshotUrl, fetchAdminBugNotes } from "#/lib/api";
 import { formatDate } from "#/lib/format";
 import { cn } from "#/lib/utils";
 
@@ -67,6 +67,22 @@ export function BugDetailDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [reporterNotification, setReporterNotification] = useState<ReporterNotificationStatus | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<IssueNote[]>([]);
+  const bugId = bug?.id;
+
+  useEffect(() => {
+    setNotes([]);
+    if (!open || !bugId) return;
+    let cancelled = false;
+    fetchAdminBugNotes(slug, bugId)
+      .then((payload) => {
+        if (!cancelled) setNotes(payload.list ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, slug, bugId]);
 
   useEffect(() => {
     if (!open) {
@@ -354,6 +370,20 @@ export function BugDetailDialog({
                 </div>
               )}
             </div>
+
+            {notes.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+                  Private notes ({notes.length})
+                </p>
+                {notes.map((note) => (
+                  <div key={note.id} className="rounded border border-sky-300/15 bg-sky-300/[0.04] p-2">
+                    <p className="mb-1 text-[10px] text-neutral-500">{formatDate(note.createdAt)} · not visible to the reporter</p>
+                    <p className="whitespace-pre-wrap break-words text-xs leading-5 text-neutral-300">{note.body}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <p className="text-[11px] uppercase tracking-wider text-neutral-500">Diagnostic context</p>

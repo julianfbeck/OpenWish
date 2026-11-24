@@ -28,13 +28,22 @@ The Swift SDK contract (`/api/wish/list`, `/api/wish/create`, `/api/wish/vote`, 
 
 - `Sources/OpenWish` — the OpenWish Swift package (forked from Martin Lasek's WishKit, renamed). New on top of upstream: the `apiUrl` parameter on `OpenWish.configure`, and `OpenWish.BugReportView()` for the bug-report flow.
 - `apps/web` — the OpenWish server. TanStack Start app deployed as a single Cloudflare Worker. **Read [`apps/web/README.md`](apps/web/README.md) for hosting & operations.**
+- `android/openwish` — the OpenWish Android library (Kotlin + Jetpack Compose), published through JitPack as `com.github.julianfbeck:OpenWish:<tag>`. See [`android/openwish/README.md`](android/openwish/README.md).
+- `localization/strings.json` — the SDK UI strings for both platforms (22 languages); `scripts/generate-localizations.py` writes the Swift string catalog and the Android resources.
 - `packages/shared` — TypeScript request/response schemas (zod) shared between the Worker and the dashboard SPA.
 - `ExampleApp/openwish` — Xcode project showing how to wire `OpenWish` into an iOS app.
+
+## Releases
+
+Swift and Android share one version number per git tag (`v1.2.0`); the backend
+deploys from `main`. Process, compatibility rules and the deploy order:
+[`RELEASING.md`](RELEASING.md). Changes: [`CHANGELOG.md`](CHANGELOG.md).
+Privacy-policy wording for apps: [`docs/privacy-wording.md`](docs/privacy-wording.md).
 
 ## Swift Package Manager
 
 ```swift
-.package(url: "https://github.com/julianfbeck/OpenWish.git", from: "1.0.0")
+.package(url: "https://github.com/julianfbeck/OpenWish.git", .upToNextMinor(from: "1.2.0"))
 // then depend on the `OpenWish` product:
 .product(name: "OpenWish", package: "openwish")
 ```
@@ -90,7 +99,8 @@ OpenWish.configure(
 )
 ```
 
-OpenWish adds SDK/app/OS/locale fields automatically. The provider is evaluated
+OpenWish adds SDK, app (bundle id, version, build), OS, device model, platform
+(iOS, iPadOS, macOS), locale, preferred languages and time zone automatically. The provider is evaluated
 only when the user submits a report. Do not attach secrets or data your privacy
 policy does not permit you to collect.
 
@@ -115,10 +125,12 @@ The Worker implements a stateless Streamable HTTP MCP server at
   and requires reconnecting.
 - **Global API key for trusted clients:** send
   `Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>`. This retains full access to
-  all projects and all 22 tools, including project creation. The dashboard shows
+  all projects and all 28 tools, including project creation. The dashboard shows
   the MCP URL and masked/revealable key under **Projects → Agent access (MCP)**.
 
 The tools cover project settings and analytics, feature and issue management,
+triage (filters, paging, compact rows, short-id lookup, similar issues,
+reporter history, stats, on-demand AI triage),
 state transitions, reporter replies, merges, private notes, screenshots,
 linking GitHub issues and pull requests to features and issues, and test email. OAuth grants apply to selected immutable project IDs; they cannot
 create new projects. Replies and resolution changes can email reporters.
@@ -146,6 +158,26 @@ Example configuration for a client using the global key:
   }
 }
 ```
+
+#### Claude Code
+
+Add the remote server once (user scope, available in every project):
+
+```bash
+claude mcp add --transport http --scope user openwish https://wishkit.juli.sh/mcp
+```
+
+Then run `/mcp` in Claude Code, pick **openwish** and choose **Authenticate**.
+The browser opens the OpenWish consent page: sign in with the dashboard
+login or passkey, select the projects Claude Code may see, keep read and write
+ticked, tick admin only if it should merge or delete. Claude Code registers
+itself as an OAuth client (loopback redirect) and refreshes its token; revoke it
+under **Projects → Agent access (MCP) → Manage OAuth access**. The
+`openwish-triage` skill in `.claude/skills/` describes the triage workflow.
+
+For a machine without a browser, use the global key instead:
+`claude mcp add --transport http --scope user openwish https://wishkit.juli.sh/mcp --header "Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>"`
+(full access to every project; keep it out of shared configs).
 
 [`apps/mcp`](apps/mcp) remains available as a compatibility stdio bridge for
 clients that cannot connect to remote MCP servers.
@@ -182,6 +214,8 @@ The dashboard and `/api/**` routes are served from the same TanStack Start app o
 
 ```bash
 swift test          # OpenWish Swift package tests
+(cd android && ./gradlew :openwish:testDebugUnitTest)   # Android library tests
+python3 scripts/generate-localizations.py --check     # string tables up to date
 pnpm typecheck      # TS for shared package + web app
 pnpm test           # vitest (45+ cases covering SDK + admin + passkey + rate-limit flows)
 pnpm build          # vite build (regenerates the route tree)

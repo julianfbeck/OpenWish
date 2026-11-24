@@ -1,4 +1,4 @@
-import type { RegistrationResponseJSON } from "@simplewebauthn/types";
+import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { passkeyRegisterVerifyRequestSchema } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 

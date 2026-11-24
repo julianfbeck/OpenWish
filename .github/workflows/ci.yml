@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  swift:
+    name: Swift package
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # Xcode's build system compiles Localizable.xcstrings into .lproj
+      # bundles the way apps get them. The runner's command-line SwiftPM
+      # (before the Swift Build backend) ships only English, which the
+      # localization tests catch.
+      - name: Tests (macOS, Xcode build system)
+        run: xcodebuild test -scheme openwish -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+      # swift test builds for macOS only; the bug-report screens are iOS-only.
+      - name: Build for iOS
+        run: xcodebuild -scheme openwish -destination 'generic/platform=iOS' -skipPackagePluginValidation build CODE_SIGNING_ALLOWED=NO
+
+  web:
+    name: Backend (typecheck + vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  go:
+    name: Go CLI + MCP bridge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go build ./...
+        working-directory: apps/cli
+      - run: go build ./...
+        working-directory: apps/mcp
+
+  localization:
+    name: Generated string tables are current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/generate-localizations.py --check
+
+  android:
+    name: Android library (unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests and release build
+        run: ./gradlew :openwish:testDebugUnitTest :openwish:assembleRelease
+        working-directory: android

@@ -76,7 +76,11 @@ struct BugComposeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                issueKindPicker
+                // Card reports need the app's card search; without it there is
+                // only one kind of report, so the switch stays hidden.
+                if OpenWish.showsIssueKindPicker {
+                    issueKindPicker
+                }
 
                 titleField
 
@@ -101,7 +105,7 @@ struct BugComposeView: View {
             .padding(20)
         }
         .background(backgroundColor.ignoresSafeArea())
-        .navigationTitle(issueKind == .bug ? "Report a bug" : "Report card data")
+        .navigationTitle(issueKind == .bug ? OpenWishStrings.text("bug.navReportBug", "Report a bug") : OpenWishStrings.text("bug.navReportCard", "Report card data"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -110,7 +114,7 @@ struct BugComposeView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(textColor)
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(OpenWish.config.localization.close)
                 .disabled(isSubmitting)
             }
         }
@@ -119,9 +123,9 @@ struct BugComposeView: View {
     // MARK: - Sub-views
 
     private var issueKindPicker: some View {
-        Picker("Report type", selection: $issueKind) {
-            Text("App bug").tag(OpenWishIssueKind.bug)
-            Text("Card or detection").tag(OpenWishIssueKind.cardData)
+        Picker(OpenWishStrings.text("bug.kindPicker", "Report type"), selection: $issueKind) {
+            Text(OpenWishStrings.text("bug.kindBug", "App bug")).tag(OpenWishIssueKind.bug)
+            Text(OpenWishStrings.text("bug.kindCard", "Card or detection")).tag(OpenWishIssueKind.cardData)
         }
         .pickerStyle(.segmented)
         .onChange(of: issueKind) { newValue in
@@ -132,7 +136,7 @@ struct BugComposeView: View {
     private var titleField: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Title")
+                Text(OpenWishStrings.text("bug.fieldTitle", "Title"))
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(textColor)
                 Spacer()
@@ -140,7 +144,7 @@ struct BugComposeView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            TextField("", text: $title, prompt: Text("What went wrong?").foregroundColor(placeholderColor))
+            TextField("", text: $title, prompt: Text(OpenWishStrings.text("bug.titlePlaceholder", "What went wrong?")).foregroundColor(placeholderColor))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 11)
                 .background(
@@ -163,7 +167,7 @@ struct BugComposeView: View {
     private var descriptionField: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Description")
+                Text(OpenWishStrings.text("bug.fieldDescription", "Description"))
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(textColor)
                 Spacer()
@@ -173,7 +177,9 @@ struct BugComposeView: View {
             }
             ZStack(alignment: .topLeading) {
                 if description.isEmpty {
-                    Text("Steps to reproduce, what you expected, what actually happened…")
+                    Text(issueKind == .cardData
+                         ? OpenWishStrings.text("bug.cardDescriptionPlaceholder", "What is wrong with the card or the detection?")
+                         : OpenWishStrings.text("bug.descriptionPlaceholder", "Steps to reproduce, what you expected, what actually happened…"))
                         .font(.body)
                         .foregroundColor(placeholderColor)
                         .padding(.horizontal, 16)
@@ -211,10 +217,10 @@ struct BugComposeView: View {
     private var emailField: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Text("Email")
+                Text(OpenWishStrings.text("bug.fieldEmail", "Email"))
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(textColor)
-                Text("optional")
+                Text(OpenWishStrings.text("bug.optional", "optional"))
                     .font(.caption.weight(.regular))
                     .foregroundColor(.secondary)
                 Spacer()
@@ -250,11 +256,11 @@ struct BugComposeView: View {
                 }
             }
             if !trimmedEmail.isEmpty && !emailIsValid {
-                Text("That doesn't look like an email address.")
+                Text(OpenWishStrings.text("bug.emailInvalid", "That doesn't look like an email address."))
                     .font(.caption2)
                     .foregroundColor(.red)
             } else {
-                Text("Not required, but an email helps us ask follow-up questions and fix the issue faster.")
+                Text(OpenWishStrings.text("bug.emailHint", "Not required, but an email helps us ask follow-up questions and fix the issue faster."))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -263,7 +269,7 @@ struct BugComposeView: View {
 
     private var cardSearchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Affected card")
+            Text(OpenWishStrings.text("bug.affectedCard", "Affected card"))
                 .font(.subheadline.weight(.medium))
                 .foregroundColor(textColor)
             if let selectedCard {
@@ -274,16 +280,16 @@ struct BugComposeView: View {
                             .font(.caption).foregroundColor(.secondary)
                     }
                     Spacer()
-                    Button("Change") { self.selectedCard = nil }
+                    Button(OpenWishStrings.text("bug.changeCard", "Change")) { self.selectedCard = nil }
                 }
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 10).fill(fieldBackgroundColor))
             } else if OpenWish.cardSearchProvider == nil {
-                Text("This app has not connected its card database. Attach a photo and describe the card below.")
+                Text(OpenWishStrings.text("bug.cardNotConnected", "This app has not connected its card database. Attach a photo and describe the card below."))
                     .font(.caption).foregroundColor(.secondary)
             } else {
                 HStack {
-                    TextField("Name, set, or card number", text: $cardQuery)
+                    TextField(OpenWishStrings.text("bug.cardSearchPlaceholder", "Name, set, or card number"), text: $cardQuery)
                         .textInputAutocapitalization(.never)
                         .padding(.horizontal, 12)
                         .frame(height: 44)
@@ -291,6 +297,7 @@ struct BugComposeView: View {
                     Button { Task { await searchCards() } } label: {
                         if isSearchingCards { ProgressView() } else { Image(systemName: "magnifyingglass") }
                     }
+                    .accessibilityLabel(OpenWishStrings.text("bug.cardSearch", "Search"))
                     .disabled(cardQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSearchingCards)
                 }
                 ForEach(cardResults) { card in
@@ -317,7 +324,7 @@ struct BugComposeView: View {
     private var screenshotsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Screenshots")
+                Text(OpenWishStrings.text("bug.screenshots", "Screenshots"))
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(textColor)
                 Spacer()
@@ -348,6 +355,7 @@ struct BugComposeView: View {
                                         .foregroundColor(.white)
                                         .background(Circle().fill(Color.black.opacity(0.6)))
                                 }
+                                .accessibilityLabel(OpenWishStrings.text("bug.removeScreenshot", "Remove screenshot"))
                                 .padding(4)
                             }
                         }
@@ -359,7 +367,7 @@ struct BugComposeView: View {
             if pendingUploads > 0 {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Uploading \(pendingUploads)…")
+                    Text(OpenWishStrings.text("bug.uploading", "Uploading %lld…", pendingUploads))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -373,7 +381,7 @@ struct BugComposeView: View {
                     onLoadFailure: handleScreenshotLoadFailure
                 )
             } else {
-                Text("Screenshot uploads require iOS 16 or newer.")
+                Text(OpenWishStrings.text("bug.screenshotsRequireIOS16", "Screenshot uploads require iOS 16 or newer."))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -382,7 +390,7 @@ struct BugComposeView: View {
                 Button {
                     showingCamera = true
                 } label: {
-                    Label(issueKind == .cardData ? "Photograph card" : "Take photo", systemImage: "camera")
+                    Label(issueKind == .cardData ? OpenWishStrings.text("bug.photographCard", "Photograph card") : OpenWishStrings.text("bug.takePhoto", "Take photo"), systemImage: "camera")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
@@ -411,7 +419,7 @@ struct BugComposeView: View {
                     ProgressView()
                         .tint(submitTextColor)
                 } else {
-                    Text(issueKind == .bug ? "Send bug report" : "Send card report")
+                    Text(issueKind == .bug ? OpenWishStrings.text("bug.sendBug", "Send bug report") : OpenWishStrings.text("bug.sendCard", "Send card report"))
                         .fontWeight(.semibold)
                         .foregroundColor(submitTextColor)
                 }
@@ -453,7 +461,7 @@ struct BugComposeView: View {
     }
 
     private func handleScreenshotLoadFailure() {
-        errorMessage = "Could not load screenshot from Photos. Please try another image."
+        errorMessage = OpenWishStrings.text("bug.errorPhotoLoad", "Could not load screenshot from Photos. Please try another image.")
     }
 
     @MainActor
@@ -471,8 +479,8 @@ struct BugComposeView: View {
 
         guard let preparedScreenshot = prepareScreenshotForUpload(from: image) else {
             errorMessage = data.count > maxScreenshotUploadBytes
-                ? "Screenshot is too large. Please choose a smaller image."
-                : "Could not prepare screenshot for upload."
+                ? OpenWishStrings.text("bug.errorTooLarge", "Screenshot is too large. Please choose a smaller image.")
+                : OpenWishStrings.text("bug.errorPrepare", "Could not prepare screenshot for upload.")
             return
         }
 
@@ -495,7 +503,7 @@ struct BugComposeView: View {
                         )
                     )
                 case .failure:
-                    errorMessage = "Could not upload screenshot. Please try again."
+                    errorMessage = OpenWishStrings.text("bug.errorUpload", "Could not upload screenshot. Please try again.")
                 }
             }
         }
@@ -555,7 +563,7 @@ struct BugComposeView: View {
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             email: (emailIsValid && !trimmedEmail.isEmpty) ? trimmedEmail : nil,
             screenshotKeys: attachments.map { $0.storageKey },
-            kind: issueKind,
+            kind: OpenWish.showsIssueKindPicker ? issueKind : .bug,
             context: OpenWish.issueContext(),
             card: selectedCard
         )
@@ -568,7 +576,7 @@ struct BugComposeView: View {
                 onSubmitted?()
                 dismiss()
             case .failure:
-                errorMessage = "Could not send bug report. Please try again."
+                errorMessage = OpenWishStrings.text("bug.errorSend", "Could not send bug report. Please try again.")
             }
         }
     }
@@ -694,7 +702,7 @@ private struct BugScreenshotPicker: View {
         ) {
             HStack {
                 Image(systemName: "photo.on.rectangle.angled")
-                Text(remaining == 0 ? "Limit reached" : "Add screenshot")
+                Text(remaining == 0 ? OpenWishStrings.text("bug.limitReached", "Limit reached") : OpenWishStrings.text("bug.addScreenshot", "Add screenshot"))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -767,10 +775,10 @@ struct BugReportContainer: View {
                     .shadow(color: Color.black.opacity(0.25), radius: 6, y: 3)
             }
             .padding(20)
-            .accessibilityLabel("Report a new bug")
+            .accessibilityLabel(OpenWishStrings.text("reports.new", "Report a new bug"))
         }
         .background(backgroundColor.ignoresSafeArea())
-        .navigationTitle("Reports")
+        .navigationTitle(OpenWishStrings.text("reports.title", "Reports"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -779,7 +787,7 @@ struct BugReportContainer: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(textColor)
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(OpenWish.config.localization.close)
             }
         }
         .task { await loadBugs() }
@@ -801,7 +809,7 @@ struct BugReportContainer: View {
                 Text(loadError)
                     .font(.footnote)
                     .foregroundColor(.red)
-                Button("Retry") { Task { await loadBugs() } }
+                Button(OpenWishStrings.text("common.retry", "Retry")) { Task { await loadBugs() } }
                 Spacer()
             }
             .frame(maxWidth: .infinity)
@@ -811,10 +819,10 @@ struct BugReportContainer: View {
                 Image(systemName: "ladybug")
                     .font(.system(size: 40))
                     .foregroundColor(.secondary)
-                Text("No bug reports yet.")
+                Text(OpenWishStrings.text("reports.empty", "No bug reports yet."))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                Text("Tap the + to send your first one.")
+                Text(OpenWishStrings.text("reports.emptyHint", "Tap the + to send your first one."))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -846,7 +854,7 @@ struct BugReportContainer: View {
             bugs = payload.list
         case .failure:
             if bugs.isEmpty {
-                loadError = "Could not load your bug reports."
+                loadError = OpenWishStrings.text("reports.loadError", "Could not load your bug reports.")
             }
         }
         isLoading = false
@@ -943,9 +951,9 @@ private struct BugRowView: View {
 
     private var adminReplyLabel: String {
         if adminReplies.count == 1 {
-            return "Admin replied"
+            return OpenWishStrings.text("reports.adminReplied", "Admin replied")
         }
-        return "Admin replied · \(adminReplies.count)"
+        return OpenWishStrings.text("reports.adminRepliedCount", "Admin replied · %lld", adminReplies.count)
     }
 
     private var rowBackground: Color {
@@ -996,14 +1004,14 @@ struct BugDetailScreen: View {
 
                 if !bug.commentList.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Conversation")
+                        Text(OpenWishStrings.text("reports.conversation", "Conversation"))
                             .font(.subheadline.weight(.medium))
                             .foregroundColor(.primary)
 
                         ForEach(bug.commentList) { comment in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text(comment.isAdmin ? "Admin" : "You")
+                                    Text(comment.isAdmin ? OpenWish.config.localization.admin : OpenWishStrings.text("reports.you", "You"))
                                         .font(.caption.weight(.semibold))
                                         .foregroundColor(comment.isAdmin ? OpenWish.theme.primaryColor : .secondary)
                                     Text(comment.createdAt, style: .relative)
@@ -1023,7 +1031,7 @@ struct BugDetailScreen: View {
                         }
                     }
                 } else {
-                    Text("No replies yet. We'll respond here once we look into it.")
+                    Text(OpenWishStrings.text("reports.noReplies", "No replies yet. We'll respond here once we look into it."))
                         .font(.footnote)
                         .foregroundColor(.secondary)
                         .padding(.vertical, 4)
@@ -1077,12 +1085,12 @@ private struct StatusPill: View {
 
     private var label: String {
         switch state {
-        case "open": return "Open"
-        case "confirmed": return "Confirmed"
-        case "inProgress": return "In progress"
-        case "fixed": return "Fixed"
-        case "wontFix": return "Won't fix"
-        case "duplicate": return "Duplicate"
+        case "open": return OpenWishStrings.text("reports.stateOpen", "Open")
+        case "confirmed": return OpenWishStrings.text("reports.stateConfirmed", "Confirmed")
+        case "inProgress": return OpenWishStrings.text("reports.stateInProgress", "In progress")
+        case "fixed": return OpenWishStrings.text("reports.stateFixed", "Fixed")
+        case "wontFix": return OpenWishStrings.text("reports.stateWontFix", "Won't fix")
+        case "duplicate": return OpenWishStrings.text("reports.stateDuplicate", "Duplicate")
         default: return state.capitalized
         }
     }

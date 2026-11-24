@@ -124,12 +124,12 @@ struct WishView: View {
                     title = Text(OpenWish.config.localization.youCanOnlyVoteOnce)
                 case .alreadyImplemented:
                     title = Text(OpenWish.config.localization.youCanNotVoteForAnImplementedWish)
-                case .voteReturnedError(let error):
-                    title = Text("Something went wrong during your vote. Try again later.\n\n\(error)")
+                case .voteReturnedError:
+                    title = Text(OpenWishStrings.text("wish.voteFailed", "Something went wrong during your vote. Try again later."))
                 case .none:
                     title = Text(OpenWish.config.localization.youCanNotVoteForYourOwnWish)
                 default:
-                    title = Text("Something went wrong during your vote. Try again later.")
+                    title = Text(OpenWishStrings.text("wish.voteFailed", "Something went wrong during your vote. Try again later."))
                 }
 
                 return Alert(title: title)

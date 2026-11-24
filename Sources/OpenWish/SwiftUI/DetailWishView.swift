@@ -78,7 +78,7 @@ struct DetailWishView: View {
 
                                 commentModel.newCommentValue = ""
                             case .failure(let error):
-                                print("❌ \(error.localizedDescription)")
+                                printError(self, error.localizedDescription)
                             }
                         }.frame(maxWidth: 700)
 

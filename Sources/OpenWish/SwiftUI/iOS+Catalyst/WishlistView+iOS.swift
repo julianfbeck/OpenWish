@@ -236,7 +236,7 @@ struct WishlistViewIOS: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.primary)
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(OpenWish.config.localization.close)
             }
 
             ToolbarItem(placement: .topBarTrailing) {

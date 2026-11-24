@@ -4,6 +4,7 @@ import {
 } from "@openwish/shared";
 import { createFileRoute } from "@tanstack/react-router";
 
+import { scheduleIssueTriage } from "#/server/ai-triage";
 import { requireProjectBySlug } from "#/server/auth";
 import { createBug, createWish, upsertUser } from "#/server/db";
 import { parseJson, publicError } from "#/server/http";
@@ -123,6 +124,12 @@ export const Route = createFileRoute("/api/public/feedback/$slug")({
             requestContext.executionContext.waitUntil(notify);
           }
         }
+
+        scheduleIssueTriage(requestContext.env, requestContext.executionContext, project, {
+          id: bug.id,
+          title: bodyResult.data.title,
+          description: bodyResult.data.description,
+        });
 
         const response: PublicFeedbackSubmitResponse = { kind: "bug", id: bug.id };
         return Response.json(response);

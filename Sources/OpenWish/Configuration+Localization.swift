@@ -194,54 +194,61 @@ extension Configuration {
             self.refreshing = refreshing
         }
 
+        /// Defaults in the app's language (22 languages ship with the package).
+        /// Override single fields through `OpenWish.config.localization`, or
+        /// any key through an `OpenWish` string table in the app.
         public static func `default`() -> Localization {
-            Localization(
-                requested: "Requested",
-                pending: "Pending",
-                approved: "In Review",
-                implemented: "Completed",
-                inReview: "In Review",
-                planned: "Planned",
-                inProgress: "In Progress",
-                completed: "Completed",
-                wishlist: "Feature Requests",
-                save: "Save",
-                title: "Title",
-                description: "Description",
-                upvote: "Upvote",
-                info: "Info",
-                youCanOnlyVoteOnce: "You can only vote once.",
-                youCanNotVoteForAnImplementedWish: "You can not vote for a feature that is already implemented.",
-                youCanNotVoteForYourOwnWish: "You cannot vote for your own feature request.",
-                poweredBy: "Powered by",
-                successfullyCreated: "Successfully created",
-                done: "Done",
-                detail: "Detail",
-                featureWishlist: "Feature Requests",
-                confirm: "Confirm",
-                cancel: "Cancel",
-                ok: "Ok",
-                titleOfWish: "Title of the feature..",
-                titleDescriptionCannotBeEmpty: "Title/Description cannot be empty.",
-                votes: "Votes",
-                close: "Close",
-                createWish: "Create Feature",
-                optional: "optional",
-                required: "required",
-                emailRequiredText: "Please enter your email address.",
-                emailFormatWrongText: "Wrong email format.",
-                comments: "Comments",
-                writeAComment: "Write a comment..",
-                admin: "Admin",
-                user: "User",
-                noFeatureRequests: "No feature requests, yet ✨",
-                emailOptional: "Email (optional)",
-                emailRequired: "Email (required)",
-                discardEnteredInformation: "Discard entered information?",
-                addButtonInNavigationBar: "Create",
-                refresh: "Refresh",
-                refreshing: "Refreshing.."
-            )
+            appLanguageDefault
         }
+
+        // Built once: every defaulted init parameter calls `default()`. The app
+        // language only changes with a relaunch.
+        private static let appLanguageDefault = Localization(
+                requested: OpenWishStrings.text("wish.requested", "Requested"),
+                pending: OpenWishStrings.text("wish.pending", "Pending"),
+                approved: OpenWishStrings.text("wish.approved", "In Review"),
+                implemented: OpenWishStrings.text("wish.implemented", "Completed"),
+                inReview: OpenWishStrings.text("wish.inReview", "In Review"),
+                planned: OpenWishStrings.text("wish.planned", "Planned"),
+                inProgress: OpenWishStrings.text("wish.inProgress", "In Progress"),
+                completed: OpenWishStrings.text("wish.completed", "Completed"),
+                wishlist: OpenWishStrings.text("wish.wishlist", "Feature Requests"),
+                save: OpenWishStrings.text("wish.save", "Save"),
+                title: OpenWishStrings.text("wish.title", "Title"),
+                description: OpenWishStrings.text("wish.description", "Description"),
+                upvote: OpenWishStrings.text("wish.upvote", "Upvote"),
+                info: OpenWishStrings.text("wish.info", "Info"),
+                youCanOnlyVoteOnce: OpenWishStrings.text("wish.youCanOnlyVoteOnce", "You can only vote once."),
+                youCanNotVoteForAnImplementedWish: OpenWishStrings.text("wish.youCanNotVoteForAnImplementedWish", "You can not vote for a feature that is already implemented."),
+                youCanNotVoteForYourOwnWish: OpenWishStrings.text("wish.youCanNotVoteForYourOwnWish", "You cannot vote for your own feature request."),
+                poweredBy: OpenWishStrings.text("wish.poweredBy", "Powered by"),
+                successfullyCreated: OpenWishStrings.text("wish.successfullyCreated", "Successfully created"),
+                done: OpenWishStrings.text("wish.done", "Done"),
+                detail: OpenWishStrings.text("wish.detail", "Detail"),
+                featureWishlist: OpenWishStrings.text("wish.featureWishlist", "Feature Requests"),
+                confirm: OpenWishStrings.text("wish.confirm", "Confirm"),
+                cancel: OpenWishStrings.text("wish.cancel", "Cancel"),
+                ok: OpenWishStrings.text("wish.ok", "Ok"),
+                titleOfWish: OpenWishStrings.text("wish.titleOfWish", "Title of the feature.."),
+                titleDescriptionCannotBeEmpty: OpenWishStrings.text("wish.titleDescriptionCannotBeEmpty", "Title/Description cannot be empty."),
+                votes: OpenWishStrings.text("wish.votes", "Votes"),
+                close: OpenWishStrings.text("wish.close", "Close"),
+                createWish: OpenWishStrings.text("wish.createWish", "Create Feature"),
+                optional: OpenWishStrings.text("wish.optional", "optional"),
+                required: OpenWishStrings.text("wish.required", "required"),
+                emailRequiredText: OpenWishStrings.text("wish.emailRequiredText", "Please enter your email address."),
+                emailFormatWrongText: OpenWishStrings.text("wish.emailFormatWrongText", "Wrong email format."),
+                comments: OpenWishStrings.text("wish.comments", "Comments"),
+                writeAComment: OpenWishStrings.text("wish.writeAComment", "Write a comment.."),
+                admin: OpenWishStrings.text("wish.admin", "Admin"),
+                user: OpenWishStrings.text("wish.user", "User"),
+                noFeatureRequests: OpenWishStrings.text("wish.noFeatureRequests", "No feature requests, yet ✨"),
+                emailOptional: OpenWishStrings.text("wish.emailOptional", "Email (optional)"),
+                emailRequired: OpenWishStrings.text("wish.emailRequired", "Email (required)"),
+                discardEnteredInformation: OpenWishStrings.text("wish.discardEnteredInformation", "Discard entered information?"),
+                addButtonInNavigationBar: OpenWishStrings.text("wish.addButtonInNavigationBar", "Create"),
+                refresh: OpenWishStrings.text("wish.refresh", "Refresh"),
+                refreshing: OpenWishStrings.text("wish.refreshing", "Refreshing..")
+            )
     }
 }

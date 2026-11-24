@@ -42,15 +42,21 @@ export const commentResponseSchema = z.object({
 export type CommentResponse = z.infer<typeof commentResponseSchema>;
 
 // Platform of the app that submitted a feature request or issue, taken from the
-// SDK's x-wishkit-sdk-kind header. Web-form and API submissions have none.
-export const platformValues = ["ios", "android"] as const;
+// SDK's x-wishkit-sdk-kind header (`macos` from OpenWish 1.2 on Mac; older
+// Swift SDKs report Mac apps as `ios`). Web-form and API submissions have none.
+export const platformValues = ["ios", "android", "macos"] as const;
 export const platformSchema = z.enum(platformValues);
 export type Platform = z.infer<typeof platformSchema>;
 
 export const platformLabels: Record<Platform, string> = {
   ios: "iOS",
   android: "Android",
+  macos: "macOS",
 };
+
+export function isPlatform(value: unknown): value is Platform {
+  return typeof value === "string" && (platformValues as readonly string[]).includes(value);
+}
 
 // A GitHub issue or pull request linked to a feature request or issue.
 export const githubLinkTypeValues = ["issue", "pull"] as const;
@@ -468,6 +474,7 @@ export type CreateIssueNoteRequest = z.infer<typeof createIssueNoteRequestSchema
 export const issueNoteListResponseSchema = z.object({
   list: z.array(issueNoteSchema),
 });
+export type IssueNoteListResponse = z.infer<typeof issueNoteListResponseSchema>;
 
 export const passkeySummarySchema = z.object({
   credentialId: z.string(),

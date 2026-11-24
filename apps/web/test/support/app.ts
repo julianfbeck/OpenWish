@@ -32,6 +32,7 @@ import { Route as BugScreenshotRoute } from "../../src/routes/api/bug/screenshot
 import { Route as AdminBugsRoute } from "../../src/routes/api/admin/projects/$slug/bugs";
 import { Route as AdminBugRoute } from "../../src/routes/api/admin/projects/$slug/bugs/$bugId";
 import { Route as AdminBugCommentsRoute } from "../../src/routes/api/admin/projects/$slug/bugs/$bugId/comments";
+import { Route as AdminBugNotesRoute } from "../../src/routes/api/admin/projects/$slug/bugs/$bugId/notes";
 import { Route as AdminBugScreenshotRoute } from "../../src/routes/api/admin/projects/$slug/bugs/$bugId/screenshots/$key";
 import { Route as HealthRoute } from "../../src/routes/health";
 import { Route as PublicProjectRoute } from "../../src/routes/api/public/projects/$slug";
@@ -189,6 +190,12 @@ const routes: RouteDefinition[] = [
   ),
   route(
     "GET",
+    /^\/api\/admin\/projects\/([^/]+)\/bugs\/([^/]+)\/notes$/,
+    ["slug", "bugId"],
+    routeHandlers(AdminBugNotesRoute),
+  ),
+  route(
+    "GET",
     /^\/api\/admin\/projects\/([^/]+)\/bugs\/([^/]+)\/screenshots\/([^/]+)$/,
     ["slug", "bugId", "key"],
     routeHandlers(AdminBugScreenshotRoute),
@@ -214,10 +221,15 @@ const routes: RouteDefinition[] = [
   route("POST", /^\/api\/v1\/projects\/([^/]+)\/bugs$/, ["slug"], routeHandlers(V1ProjectBugsRoute)),
 ];
 
-export async function requestApp(path: string, init: RequestInit | undefined, env: Bindings) {
+export async function requestApp(
+  path: string,
+  init: RequestInit | undefined,
+  env: Bindings,
+  executionContext?: ExecutionContext,
+) {
   const request = createRequest(path, init);
   const pathname = new URL(request.url).pathname;
-  const context: ServerRequestContext = { env };
+  const context: ServerRequestContext = { env, executionContext };
 
   await ensureDatabaseInitialized(env.DB);
 

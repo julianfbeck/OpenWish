@@ -20,6 +20,7 @@ import {
   type IssueNote,
   type GitHubLink,
   type GitHubLinkType,
+  isPlatform,
   type Platform,
 } from "@openwish/shared";
 
@@ -1376,7 +1377,7 @@ async function loadPlatforms(
       .all<{ id: string; platform: string }>();
     return new Map(
       (result.results ?? [])
-        .filter((row): row is { id: string; platform: Platform } => row.platform === "ios" || row.platform === "android")
+        .filter((row): row is { id: string; platform: Platform } => isPlatform(row.platform))
         .map((row) => [row.id, row.platform]),
     );
   } catch {

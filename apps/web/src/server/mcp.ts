@@ -9,6 +9,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
+import { aiTriageEnabled, duplicateCandidates, triageIssue } from "./ai-triage";
 import { resolveAppStoreMetadata } from "./app-store";
 import { requireMcpBearer, requireProjectBySlug } from "./auth";
 import { isScreenshotKeyForProject } from "./bug-constants";
@@ -43,11 +44,36 @@ import {
   upsertUser,
 } from "./db";
 import { sendTestEmail } from "./notifications";
+import {
+  compactFeature,
+  compactIssue,
+  filterIssues,
+  issueStats,
+  paginate,
+  reporterIssues,
+  resolveIdPrefix,
+  revenueCatIdOf,
+} from "./mcp-queries";
 import { notifyReporter } from "./reporter-notify";
 import type { Bindings, ProjectRow } from "./types";
 
 const slug = z.string().min(2).max(60).regex(/^[a-z0-9-]+$/).describe("OpenWish project slug");
 const uuid = z.string().uuid();
+const idOrPrefix = z
+  .string()
+  .min(4)
+  .max(36)
+  .regex(/^[0-9a-fA-F-]+$/)
+  .describe("Full id or its first characters (the 8-character short id from compact lists)");
+const issueFilters = {
+  state: z.array(bugStateSchema).max(6).optional().describe("Only these states, e.g. [\"open\", \"confirmed\"]"),
+  kind: issueKindSchema.optional(),
+  platform: z.enum(["ios", "android", "macos", "unknown"]).optional(),
+  appVersion: z.string().min(1).max(40).optional().describe("context.app.version, e.g. 6.0"),
+  query: z.string().min(1).max(200).optional().describe("Case-insensitive text in title, description, card name, reporter email or id"),
+  since: z.string().datetime().optional().describe("Only issues created at or after this ISO time"),
+  adminReplied: z.boolean().optional(),
+};
 const githubTarget = z
   .enum(["feature", "issue"])
   .describe("'feature' for a feature request (featureId), 'issue' for a bug or card-data issue (issueId)");
@@ -345,11 +371,160 @@ function registerTools(server: McpServer, env: Bindings, request: Request, acces
     "openwish_list_issues",
     {
       title: "List bugs and card-data issues",
-      description: "List all issues with device/app context, selected card data, screenshots, comments, and reporter contact.",
-      inputSchema: z.object({ project: slug }),
+      description:
+        "List issues, newest first, with device/app context, selected card data, screenshots, comments, and reporter contact. " +
+        "Optional filters (state, kind, platform, appVersion, query, since, adminReplied), paging (limit, offset) and " +
+        "compact rows (id, shortId, title, state, platform, appVersion, counts) for triage overviews.",
+      inputSchema: z.object({
+        project: slug,
+        ...issueFilters,
+        compact: z.boolean().default(false).describe("Return short rows instead of full issues"),
+        limit: z.number().int().min(1).max(200).optional(),
+        offset: z.number().int().min(0).default(0),
+      }),
       annotations: { readOnlyHint: true },
     },
-    async ({ project }) => result({ list: await loadAdminBugs(env.DB, await projectFor(env, project, access)) }),
+    async ({ project, compact, limit, offset, ...filter }) => {
+      const all = await loadAdminBugs(env.DB, await projectFor(env, project, access));
+      const page = paginate(filterIssues(all, filter), limit, offset);
+      return result({
+        list: compact ? page.items.map(compactIssue) : page.items,
+        total: page.total,
+        nextOffset: page.nextOffset,
+      });
+    },
+  );
+
+  registerTool(
+    "openwish_get_issue",
+    {
+      title: "Get one issue",
+      description: "Get one issue with its context, comments and private notes by full id or id prefix (e.g. the 8-character short id from emails and compact lists).",
+      inputSchema: z.object({ project: slug, id: idOrPrefix }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ project, id }) => {
+      const row = await projectFor(env, project, access);
+      const found = resolveIdPrefix(await loadAdminBugs(env.DB, row), id);
+      if (found.status === "missing") return failure("No issue matches that id.");
+      if (found.status === "ambiguous") {
+        return failure(`The prefix matches ${found.matches.length} issues: ${found.matches.slice(0, 10).map((issue) => issue.id).join(", ")}. Use more characters.`);
+      }
+      return result({ issue: found.item, notes: await loadIssueNotes(env.DB, row.id, found.item.id) });
+    },
+  );
+
+  registerTool(
+    "openwish_get_feature",
+    {
+      title: "Get one feature request",
+      description: "Get one feature request with votes and comments by full id or id prefix.",
+      inputSchema: z.object({ project: slug, id: idOrPrefix }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ project, id }) => {
+      const row = await projectFor(env, project, access);
+      const found = resolveIdPrefix((await loadAdminProject(env.DB, row)).list, id);
+      if (found.status === "missing") return failure("No feature request matches that id.");
+      if (found.status === "ambiguous") {
+        return failure(`The prefix matches ${found.matches.length} feature requests: ${found.matches.slice(0, 10).map((feature) => feature.id).join(", ")}. Use more characters.`);
+      }
+      return result({ feature: found.item });
+    },
+  );
+
+  registerTool(
+    "openwish_find_similar_issues",
+    {
+      title: "Find similar issues",
+      description:
+        "Find existing issues that share words with a text or with an existing issue (lexical match, best first). " +
+        "Use it to spot duplicates before replying or merging. Reports in other languages may need a translated query.",
+      inputSchema: z.object({
+        project: slug,
+        issueId: idOrPrefix.optional().describe("Compare against this issue"),
+        text: z.string().min(3).max(2_000).optional().describe("Or compare against this text"),
+        limit: z.number().int().min(1).max(25).default(10),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ project, issueId, text, limit }) => {
+      const all = await loadAdminBugs(env.DB, await projectFor(env, project, access));
+      let target: { id: string; title: string; description: string; card?: { name?: string } | null };
+      if (issueId) {
+        const found = resolveIdPrefix(all, issueId);
+        if (found.status !== "found") return failure(found.status === "missing" ? "No issue matches that id." : "That id prefix is ambiguous.");
+        target = found.item;
+      } else if (text) {
+        target = { id: "", title: text, description: "" };
+      } else {
+        return failure("Pass issueId or text.");
+      }
+      const similar = duplicateCandidates(target, all, limit + 4).slice(0, limit);
+      return result({ target: target.id || null, list: similar.map(compactIssue) });
+    },
+  );
+
+  registerTool(
+    "openwish_get_reporter_history",
+    {
+      title: "Get a reporter's history",
+      description:
+        "Everything one reporter sent in a project: issues (compact) and feature requests, found by the SDK user id " +
+        "(userUUID) or by the RevenueCat app user id apps attach as context.revenueCat.appUserId. Includes their stored contact email.",
+      inputSchema: z.object({
+        project: slug,
+        userId: z.string().min(8).max(64).optional().describe("userUUID of an issue or feature"),
+        revenueCatId: z.string().min(1).max(200).optional().describe("RevenueCat app user id"),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ project, userId, revenueCatId }) => {
+      if (!userId && !revenueCatId) return failure("Pass userId or revenueCatId.");
+      const row = await projectFor(env, project, access);
+      const issues = reporterIssues(await loadAdminBugs(env.DB, row), { userId, revenueCatId });
+      const userIds = new Set([...(userId ? [userId.toLowerCase()] : []), ...issues.map((issue) => issue.userUUID.toLowerCase())]);
+      const features = (await loadAdminProject(env.DB, row)).list.filter((feature) => userIds.has(feature.userUUID.toLowerCase()));
+      const contacts = await Promise.all([...userIds].map(async (id) => ({ userId: id, ...(await getReporterContact(env.DB, row.id, id)) })));
+      return result({
+        userIds: [...userIds],
+        revenueCatIds: [...new Set(issues.map((issue) => revenueCatIdOf(issue.context)).filter((id): id is string => id !== null))],
+        contacts,
+        issues: issues.map(compactIssue),
+        features: features.map(compactFeature),
+      });
+    },
+  );
+
+  registerTool(
+    "openwish_issue_stats",
+    {
+      title: "Issue statistics",
+      description: "Count issues by state, kind, platform, app version and OS version, with the same filters as openwish_list_issues (e.g. state [\"open\"] to group open bugs by app version).",
+      inputSchema: z.object({ project: slug, ...issueFilters }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ project, ...filter }) =>
+      result(issueStats(filterIssues(await loadAdminBugs(env.DB, await projectFor(env, project, access)), filter))),
+  );
+
+  registerTool(
+    "openwish_triage_issue",
+    {
+      title: "Run AI triage on an issue",
+      description:
+        "Run the server's AI triage (Workers AI) for one issue and store the result as a private note: English translation, " +
+        "one-line summary, likely duplicates. Never replies to the reporter. Fails when AI triage is not configured or switched off.",
+      inputSchema: z.object({ project: slug, id: idOrPrefix }),
+    },
+    async ({ project, id }) => {
+      if (!aiTriageEnabled(env)) return failure("AI triage is not enabled on this server (AI binding missing or OPENWISH_AI_TRIAGE=off).");
+      const row = await projectFor(env, project, access);
+      const found = resolveIdPrefix(await loadAdminBugs(env.DB, row), id);
+      if (found.status !== "found") return failure(found.status === "missing" ? "No issue matches that id." : "That id prefix is ambiguous.");
+      const triage = await triageIssue(env, row, found.item);
+      return triage ? result({ issueId: found.item.id, triage }) : failure("The model returned no usable triage.");
+    },
   );
 
   registerTool(
@@ -593,7 +768,10 @@ function createOpenWishMcpServer(env: Bindings, request: Request, access?: McpAc
     { name: "openwish", version: "2.0.0" },
     {
       instructions:
-        "Manage OpenWish projects, feature requests, bugs, card-data issues, replies, notes, linked GitHub issues and pull requests, analytics, and settings. Confirm destructive actions with the user. Never reveal or repeat the bearer token.",
+        "Manage OpenWish projects, feature requests, bugs, card-data issues, replies, notes, linked GitHub issues and pull requests, analytics, and settings. " +
+        "For triage, start with openwish_list_issues (compact: true, state: [\"open\"]) or openwish_issue_stats, open single items with openwish_get_issue " +
+        "(accepts the 8-character short id), check duplicates with openwish_find_similar_issues and private notes (AI triage notes start with [AI triage]). " +
+        "Replies email the reporter: draft them for the user's approval unless told otherwise. Confirm destructive actions with the user. Never reveal or repeat the bearer token.",
     },
   );
   registerTools(server, env, request, access);
