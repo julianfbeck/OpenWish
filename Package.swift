@@ -1,8 +1,9 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.9
 import PackageDescription
 
 let package = Package(
     name: "openwish",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v12),
         .iOS(.v14)
@@ -14,9 +15,13 @@ let package = Package(
         .package(url: "https://github.com/wishkit/wishkit-ios-shared.git", exact: "1.5.0")
     ],
     targets: [
-        .target(name: "OpenWish", dependencies: [
-            .product(name: "WishKitShared", package: "wishkit-ios-shared")
-        ]),
+        .target(
+            name: "OpenWish",
+            dependencies: [
+                .product(name: "WishKitShared", package: "wishkit-ios-shared")
+            ],
+            resources: [.process("Resources")]
+        ),
         .testTarget(name: "OpenWishTests", dependencies: [.target(name: "OpenWish")]),
     ]
 )

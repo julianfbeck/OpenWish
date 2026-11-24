@@ -101,6 +101,12 @@ public struct OpenWish {
         threadLock.withLock { _cardSearchProvider }
     }
 
+    /// The "App bug / Card or detection" switch only makes sense when the app
+    /// connected its card database.
+    static var showsIssueKindPicker: Bool {
+        cardSearchProvider != nil
+    }
+
     static func issueContext() -> [String: OpenWishValue] {
         var context: [String: OpenWishValue] = [
             "sdk": .object(["name": .string("OpenWish"), "version": .string(ProjectSettings.sdkVersion)]),
@@ -109,10 +115,7 @@ public struct OpenWish {
                 "version": .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"),
                 "build": .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown")
             ]),
-            "device": .object([
-                "os": .string(ProcessInfo.processInfo.operatingSystemVersionString),
-                "locale": .string(Locale.current.identifier)
-            ])
+            "device": .object(DeviceInfo.current.contextFields)
         ]
         let provider = threadLock.withLock { _issueContextProvider }
         for (key, value) in provider?() ?? [:] {

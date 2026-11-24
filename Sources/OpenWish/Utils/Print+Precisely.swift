@@ -6,6 +6,8 @@
 //  Copyright © 2023 Martin Lasek. All rights reserved.
 //
 
+import os
+
 /// More verbose SUCCESS message print function.
 internal func printSuccess<T>(_ type: T, _ text: String, line: Int = #line) {
   printu(.success, type, line, text)
@@ -31,11 +33,15 @@ internal func printDebug<T>(_ type: T, _ text: String, line: Int = #line) {
   printu(.debug, type, line, text)
 }
 
-/// Universal print that modifies the message to be consistent before printing it.
+/// Debug-level unified logging instead of `print`: nothing reaches the host
+/// app's console unless debug logging for the "OpenWish" subsystem is enabled,
+/// and the message (it can contain server responses) is private.
 fileprivate func printu<T>(_ kind: Kind, _ type: T, _ line: Int, _ text: String) {
   let typeName = cleanUp(type: T.self)
-  print("\(kind.rawValue) Line: \(line) | \(typeName) | \(text)")
+  openWishLogger.debug("\(kind.rawValue, privacy: .public) \(typeName, privacy: .public):\(line, privacy: .public) \(text, privacy: .private)")
 }
+
+let openWishLogger = Logger(subsystem: "OpenWish", category: "sdk")
 
 fileprivate enum Kind: String {
   case success = "✅"

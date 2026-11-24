@@ -17,7 +17,7 @@ struct ProjectSettings {
         let wishKitUrl = ProcessInfo.processInfo.environment["wishkit-url"]
         return wishKitUrl ?? "https://www.wishkit.io/api"
     }
-    static let sdkVersion = "1.1.0"
+    static let sdkVersion = "1.2.0"
 
     static var shouldTryV2: Bool {
         switch OpenWish.apiVersion {
