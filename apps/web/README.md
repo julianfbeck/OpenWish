@@ -291,7 +291,18 @@ project-scoped OAuth access tokens through the standard `Authorization` header.
 Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>
 ```
 
-The 22 tools expose the dashboard's complete operational surface: project
+Triage tools (read permission): `openwish_list_issues` takes filters (state,
+kind, platform, appVersion, query, since, adminReplied), paging
+(`limit`/`offset`, returns `total` and `nextOffset`) and `compact: true` rows;
+`openwish_get_issue` / `openwish_get_feature` accept the 8-character short id
+from emails and compact lists; `openwish_find_similar_issues` finds likely
+duplicates for an issue or a text; `openwish_get_reporter_history` collects one
+reporter's issues and feature requests by SDK user id or RevenueCat app user id;
+`openwish_issue_stats` counts issues by state, kind, platform, app version and
+OS version. `openwish_triage_issue` (write) runs the AI triage for one issue on
+demand.
+
+The 28 tools expose the dashboard's complete operational surface: project
 CRUD/settings and analytics; feature creation, editing, workflow, replies,
 merge, and deletion; bug/card-data issue creation, editing, workflow, replies,
 private notes, screenshot reads, and deletion; linking GitHub issues and pull

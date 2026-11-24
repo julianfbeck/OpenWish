@@ -115,10 +115,12 @@ The Worker implements a stateless Streamable HTTP MCP server at
   and requires reconnecting.
 - **Global API key for trusted clients:** send
   `Authorization: Bearer <OPENWISH_GLOBAL_API_KEY>`. This retains full access to
-  all projects and all 22 tools, including project creation. The dashboard shows
+  all projects and all 28 tools, including project creation. The dashboard shows
   the MCP URL and masked/revealable key under **Projects → Agent access (MCP)**.
 
 The tools cover project settings and analytics, feature and issue management,
+triage (filters, paging, compact rows, short-id lookup, similar issues,
+reporter history, stats, on-demand AI triage),
 state transitions, reporter replies, merges, private notes, screenshots,
 linking GitHub issues and pull requests to features and issues, and test email. OAuth grants apply to selected immutable project IDs; they cannot
 create new projects. Replies and resolution changes can email reporters.
