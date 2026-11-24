@@ -35,7 +35,7 @@ Two flavours:
 
 ### A. Use the published OpenWish package
 
-In Xcode → File → Add Package Dependencies → URL `https://github.com/julianfbeck/OpenWish.git`, pin to `from: "1.0.0"`, then depend on the `OpenWish` product.
+In Xcode → File → Add Package Dependencies → URL `https://github.com/julianfbeck/OpenWish.git`, use the rule "Up to Next Minor Version" from the newest tag (e.g. `1.2.0`; in a `Package.swift`: `.upToNextMinor(from: "1.2.0")`), then depend on the `OpenWish` product. Never pin a revision: patch releases should arrive on their own, minor releases are a deliberate bump (see `RELEASING.md`). Android apps use the same version through JitPack, see `android/openwish/README.md`.
 
 ### B. Use the local OpenWish repository
 
@@ -69,6 +69,24 @@ struct MyApp: App {
     }
 }
 ```
+
+For bug reports with diagnostics and card reports (OpenWish 1.1+), pass the V2 options:
+
+```swift
+OpenWish.configure(
+    with: "ow_api_…",
+    apiUrl: "https://feedback.example.com/api",
+    apiVersion: .automatic,                      // V2 with V1 fallback; .v2 to require it
+    issueContextProvider: {                      // evaluated only when the user sends a report
+        ["revenueCat": .object(["appUserId": .string(Purchases.shared.appUserID)])]
+    },
+    cardSearchProvider: { query in               // omit in apps without a card database
+        await catalog.search(query).map { OpenWishCard(id: $0.id, name: $0.name, setName: $0.set, number: $0.number) }
+    }
+)
+```
+
+Without a `cardSearchProvider` the bug form hides the "App bug / Card or detection" switch and files plain bugs. The SDK adds app, OS, device model, platform, locale, preferred languages and time zone itself; list anything extra the app attaches in its privacy policy (`docs/privacy-wording.md`).
 
 **Important**:
 - `apiUrl` must be `https://<your-host>/api` — include `/api`, no trailing slash.
@@ -105,6 +123,10 @@ struct ContentView: View {
 ```
 
 `OpenWish.BugReportView()` opens to a list of the **current user's** bug reports (filtered server-side by `x-wishkit-uuid`). The "+" floating button pushes the compose form. Tapping a row pushes a detail screen showing description, status pill, and admin replies in a chat thread.
+
+## Languages
+
+The SDK UI ships in 22 languages (`Sources/OpenWish/Resources/Localizable.xcstrings`, generated from `localization/strings.json`). It follows the app's own language (`Bundle.main.preferredLocalizations`), so it never shows a language the app does not support. To change a text, either set a field of `OpenWish.config.localization` (feature-request strings) or add an `OpenWish.xcstrings` / `OpenWish.strings` table to the app with the same key (any SDK string, e.g. `bug.sendBug`).
 
 ## Step 4 — (optional) identify the user
 
