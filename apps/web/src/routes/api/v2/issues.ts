@@ -6,7 +6,7 @@ import { isScreenshotKeyForProject } from "#/server/bug-constants";
 import { createV2Issue, loadUserIssuesV2 } from "#/server/db";
 import { parseJson, sdkError } from "#/server/http";
 import { sendBugNotification } from "#/server/notifications";
-import { platformFromContext, platformFromRequest } from "#/server/platform";
+import { issuePlatform } from "#/server/platform";
 import { enforceSdkRateLimit } from "#/server/rate-limit";
 import { requireRequestContext } from "#/server/route-context";
 
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/v2/issues")({
             return sdkError("couldNotCreateRequest", 400);
           }
         }
-        const platform = platformFromRequest(request) ?? platformFromContext(body.data.context ?? {});
+        const platform = issuePlatform(request, body.data.context ?? {});
         const created = await createV2Issue(
           requestContext.env.DB,
           projectResult.project,

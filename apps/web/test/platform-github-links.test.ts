@@ -4,7 +4,7 @@ import { bootstrapProject, createV2Issue, createWish } from "../src/server/db";
 import { parseGitHubLink } from "../src/server/github-links";
 import { handleOpenWishMcpRequest } from "../src/server/mcp";
 import { dashboardMcpSubject, type McpAccess } from "../src/server/mcp-access";
-import { platformFromContext, platformFromRequest } from "../src/server/platform";
+import { issuePlatform, platformFromContext, platformFromRequest } from "../src/server/platform";
 import type { Bindings } from "../src/server/types";
 import { readSetCookie, requestApp } from "./support/app";
 import { MockD1Database } from "./support/mock-d1";
@@ -98,6 +98,7 @@ describe("platform detection", () => {
       new Request("http://localhost/api/wish/create", { headers: kind ? { "x-wishkit-sdk-kind": kind } : {} });
     expect(platformFromRequest(withKind("ios"))).toBe("ios");
     expect(platformFromRequest(withKind(" Android "))).toBe("android");
+    expect(platformFromRequest(withKind("macos"))).toBe("macos");
     expect(platformFromRequest(withKind("web"))).toBeNull();
     expect(platformFromRequest(withKind())).toBeNull();
   });
@@ -109,6 +110,18 @@ describe("platform detection", () => {
     expect(platformFromContext({ app: { bundleId: "com.example.app" } })).toBe("ios");
     expect(platformFromContext({ device: "string-not-object" })).toBeNull();
     expect(platformFromContext({})).toBeNull();
+  });
+
+  it("recognises Mac reports, including from Swift SDKs that still send the ios header", () => {
+    const withKind = (kind?: string) =>
+      new Request("http://localhost/api/v2/issues", { headers: kind ? { "x-wishkit-sdk-kind": kind } : {} });
+    const appSuppliedMac = { sdk: { name: "OpenWish" }, platform: "macOS" };
+    expect(platformFromContext({ sdk: { name: "OpenWish" }, device: { platform: "macOS" } })).toBe("macos");
+    expect(platformFromContext(appSuppliedMac)).toBe("macos");
+    expect(issuePlatform(withKind("ios"), appSuppliedMac)).toBe("macos");
+    expect(issuePlatform(withKind("macos"), {})).toBe("macos");
+    expect(issuePlatform(withKind("ios"), { sdk: { name: "OpenWish" } })).toBe("ios");
+    expect(issuePlatform(withKind("android"), appSuppliedMac)).toBe("android");
   });
 });
 
